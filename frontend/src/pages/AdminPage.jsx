@@ -548,6 +548,4 @@ export default function AdminPage({ onLogout }) {
         </div>
     );
 }
-        </div>
-    );
-}
+
