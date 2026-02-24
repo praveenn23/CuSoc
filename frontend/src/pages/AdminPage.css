@@ -293,28 +293,6 @@
     color: var(--text-primary);
 }
 
-/* ── Export Excel button ─────────────────────────────────────── */
-.btn-export {
-    background: #e6f4ea;
-    color: #137333;
-    border: 1.5px solid #b7dfbb;
-    font-weight: 600;
-    white-space: nowrap;
-    gap: 6px;
-    transition: background var(--transition), color var(--transition), border-color var(--transition);
-}
-
-.btn-export:hover:not(:disabled) {
-    background: #34a853;
-    color: white;
-    border-color: #34a853;
-}
-
-.btn-export:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
-
 /* ── Table ───────────────────────────────────────────────────── */
 .admin-table-wrap {
     overflow-x: auto;
