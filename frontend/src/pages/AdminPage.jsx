@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import {
     Users, Ticket, BarChart2, LogOut, Trash2, RefreshCw,
     Search, Edit3, Save, X, ChevronDown, ChevronUp, AlertTriangle,
-    CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash,
+    CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash, FileDown,
 } from 'lucide-react';
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
@@ -283,6 +284,43 @@ export default function AdminPage({ onLogout }) {
         onLogout();
     };
 
+    // ── Export to Excel ────────────────────────────────────────────────────────
+    const exportToExcel = () => {
+        if (regs.length === 0) return;
+
+        // Build rows — use filtered list so search filter is respected
+        const rows = filtered.map((r, i) => ({
+            '#': i + 1,
+            'Name': r.name,
+            'Email': r.email,
+            'Phone': r.phone,
+            'Department': r.course || '—',
+            'Registered At': new Date(r.created_at).toLocaleString('en-IN', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', hour12: true,
+            }),
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+
+        // Column widths
+        worksheet['!cols'] = [
+            { wch: 4 },   // #
+            { wch: 24 },  // Name
+            { wch: 34 },  // Email
+            { wch: 14 },  // Phone
+            { wch: 40 },  // Department
+            { wch: 22 },  // Registered At
+        ];
+
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Registrations');
+
+        const eventName = event?.title?.replace(/[^a-zA-Z0-9]/g, '_') || 'CuSOC';
+        const timestamp = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(workbook, `${eventName}_Registrations_${timestamp}.xlsx`);
+    };
+
     // ── Sort icon helper ───────────────────────────────────────────────────────
     const SortIcon = ({ col }) => sortKey === col
         ? (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)
@@ -405,6 +443,15 @@ export default function AdminPage({ onLogout }) {
                             <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
                                 <RefreshCw size={14} /> Refresh
                             </button>
+                            <button
+                                className="btn btn-export btn-sm"
+                                onClick={exportToExcel}
+                                disabled={regs.length === 0}
+                                title={regs.length === 0 ? 'No data to export' : `Export ${filtered.length} row(s) to Excel`}
+                                id="btn-export-excel"
+                            >
+                                <FileDown size={14} /> Export Excel
+                            </button>
                         </div>
 
                         {deleteMsg && (
@@ -498,6 +545,9 @@ export default function AdminPage({ onLogout }) {
                     loading={deleting}
                 />
             )}
+        </div>
+    );
+}
         </div>
     );
 }
