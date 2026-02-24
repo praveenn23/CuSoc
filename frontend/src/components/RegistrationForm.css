@@ -62,3 +62,42 @@
 .reg-submit-btn {
     margin-top: 8px;
 }
+
+/* ── Department dropdown ─────────────────────────────────── */
+.reg-select-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Hide native arrow, show our custom one */
+.reg-select {
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    padding-right: 40px !important;
+    background: var(--white);
+}
+
+/* Placeholder color when nothing selected */
+.reg-select:not(.selected) {
+    color: var(--text-tertiary);
+}
+
+.reg-select.selected {
+    color: var(--text-primary);
+}
+
+.reg-select-chevron {
+    position: absolute;
+    right: 14px;
+    color: var(--text-tertiary);
+    pointer-events: none;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.reg-select:focus+.reg-select-chevron {
+    color: var(--blue);
+    transform: rotate(180deg);
+}
