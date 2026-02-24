@@ -79,7 +79,7 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
                         type="text"
                         name="name"
                         className={`form-input ${errors.name ? 'error' : ''}`}
-                        placeholder="e.g. Priya Sharma"
+                        placeholder="e.g. Praveen Kumar"
                         value={form.name}
                         onChange={handleChange}
                         autoComplete="name"
@@ -111,7 +111,7 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
                 <div className="form-group">
                     <label className="form-label" htmlFor="reg-course">
                         <BookOpen size={14} /> Course / Year{' '}
-                        <span className="optional-label">(optional)</span>
+                        <span className="required-star">*</span>
                     </label>
                     <input
                         id="reg-course"
