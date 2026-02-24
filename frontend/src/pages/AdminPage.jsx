@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Users, Ticket, BarChart2, LogOut, Trash2, RefreshCw,
     Search, Edit3, Save, X, ChevronDown, ChevronUp, AlertTriangle,
-    CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash, FileDown,
+    CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash,
 } from 'lucide-react';
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
@@ -283,52 +283,6 @@ export default function AdminPage({ onLogout }) {
         onLogout();
     };
 
-    // ── Export to Excel (dynamic import — xlsx loads only when clicked) ─────────
-    const [exporting, setExporting] = useState(false);
-
-    const exportToExcel = async () => {
-        if (regs.length === 0 || exporting) return;
-        setExporting(true);
-        try {
-            // Lazily load xlsx only when needed — keeps initial bundle small
-            const XLSX = await import('xlsx');
-
-            const rows = filtered.map((r, i) => ({
-                '#': i + 1,
-                'Name': r.name,
-                'Email': r.email,
-                'Phone': r.phone,
-                'Department': r.course || '—',
-                'Registered At': new Date(r.created_at).toLocaleString('en-IN', {
-                    day: '2-digit', month: 'short', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit', hour12: true,
-                }),
-            }));
-
-            const worksheet = XLSX.utils.json_to_sheet(rows);
-            const workbook = XLSX.utils.book_new();
-
-            worksheet['!cols'] = [
-                { wch: 4 },   // #
-                { wch: 24 },  // Name
-                { wch: 34 },  // Email
-                { wch: 14 },  // Phone
-                { wch: 40 },  // Department
-                { wch: 22 },  // Registered At
-            ];
-
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Registrations');
-
-            const eventName = event?.title?.replace(/[^a-zA-Z0-9]/g, '_') || 'CuSOC';
-            const timestamp = new Date().toISOString().slice(0, 10);
-            XLSX.writeFile(workbook, `${eventName}_Registrations_${timestamp}.xlsx`);
-        } catch (err) {
-            console.error('Export failed:', err);
-        } finally {
-            setExporting(false);
-        }
-    };
-
     // ── Sort icon helper ───────────────────────────────────────────────────────
     const SortIcon = ({ col }) => sortKey === col
         ? (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)
@@ -450,17 +404,6 @@ export default function AdminPage({ onLogout }) {
                             </div>
                             <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
                                 <RefreshCw size={14} /> Refresh
-                            </button>
-                            <button
-                                className="btn btn-export btn-sm"
-                                onClick={exportToExcel}
-                                disabled={regs.length === 0 || exporting}
-                                title={regs.length === 0 ? 'No data to export' : `Export ${filtered.length} row(s) to Excel`}
-                                id="btn-export-excel"
-                            >
-                                {exporting
-                                    ? <><span className="spinner" /> Exporting…</>
-                                    : <><FileDown size={14} /> Export Excel</>}
                             </button>
                         </div>
 
