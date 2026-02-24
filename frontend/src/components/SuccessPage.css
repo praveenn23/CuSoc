@@ -1,0 +1,132 @@
+.success-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 20px;
+    padding: 8px 0 4px;
+    position: relative;
+}
+
+/* Confetti */
+.success-confetti {
+    position: absolute;
+    top: -8px;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    pointer-events: none;
+}
+
+.confetti-piece {
+    font-size: 24px;
+    animation: confettiFall 0.6s ease forwards;
+    opacity: 0;
+}
+
+@keyframes confettiFall {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(.5);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Icon */
+.success-icon-wrap {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: var(--green-light);
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: scaleIn 0.35s ease;
+    margin-top: 16px;
+}
+
+/* Text */
+.success-title {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.success-desc {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    max-width: 360px;
+    margin: 0;
+}
+
+/* Details card */
+.success-details-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 16px 20px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: left;
+}
+
+.success-detail-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    color: var(--blue);
+}
+
+.success-detail-label {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.success-detail-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+/* Tips */
+.success-tips {
+    background: var(--blue-light);
+    border-radius: var(--r-lg);
+    padding: 16px 20px;
+    width: 100%;
+    text-align: left;
+}
+
+.success-tips h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--blue);
+    margin-bottom: 8px;
+}
+
+.success-tips ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.success-tips li {
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding-left: 4px;
+}

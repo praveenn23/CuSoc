@@ -1,0 +1,174 @@
+.register-modal {
+    position: relative;
+}
+
+/* ── Header ── */
+.modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 24px 24px 0;
+    gap: 16px;
+}
+
+.modal-header-content {
+    flex: 1;
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+}
+
+.modal-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+.modal-close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all var(--transition);
+}
+
+.modal-close-btn:hover {
+    background: var(--bg);
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+}
+
+/* ── Step Indicator ── */
+.modal-steps {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px 0;
+    position: relative;
+}
+
+.modal-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    position: relative;
+    z-index: 1;
+}
+
+.modal-step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    transition: all var(--transition);
+}
+
+.modal-step.active .modal-step-dot {
+    border-color: var(--blue);
+    background: var(--blue);
+    color: white;
+}
+
+.modal-step.done .modal-step-dot {
+    border-color: var(--green);
+    background: var(--green);
+    color: white;
+}
+
+.modal-step-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    transition: color var(--transition);
+}
+
+.modal-step.active .modal-step-label {
+    color: var(--blue);
+}
+
+.modal-step.done .modal-step-label {
+    color: var(--green);
+}
+
+/* connector */
+.modal-step:not(:last-child)::after {
+    content: '';
+    flex: 1;
+    height: 2px;
+    background: var(--border);
+    margin-left: 8px;
+}
+
+/* ── Body ── */
+.modal-body {
+    padding: 24px;
+}
+
+/* ── Event Full ── */
+.modal-full-msg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    padding: 24px 0;
+}
+
+.modal-full-icon {
+    font-size: 48px;
+}
+
+.modal-full-msg h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--red);
+}
+
+.modal-full-msg p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    max-width: 280px;
+    line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+    .modal-header {
+        padding: 20px 16px 0;
+    }
+
+    .modal-body {
+        padding: 20px 16px;
+    }
+
+    .modal-steps {
+        padding: 16px 16px 0;
+    }
+
+    .modal-step-label {
+        display: none;
+    }
+}

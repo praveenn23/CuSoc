@@ -1,0 +1,64 @@
+.reg-form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.reg-form-header {
+    margin-bottom: 4px;
+}
+
+.reg-email-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--green-light);
+    color: var(--green);
+    border: 1px solid #b7dfbb;
+    border-radius: var(--r-md);
+    padding: 10px 14px;
+    font-size: 14px;
+    width: 100%;
+    animation: slideUp 0.2s ease;
+}
+
+.reg-email-badge strong {
+    color: #1e7e34;
+}
+
+.reg-global-error {
+    background: var(--red-light);
+    color: var(--red);
+    border: 1px solid #f5c6c3;
+    border-radius: var(--r-md);
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: slideUp 0.2s ease;
+}
+
+.reg-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label svg {
+    display: inline;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+.required-star {
+    color: var(--red);
+    margin-left: 2px;
+}
+
+.optional-label {
+    color: var(--text-tertiary);
+    font-weight: 400;
+    margin-left: 4px;
+}
+
+.reg-submit-btn {
+    margin-top: 8px;
+}

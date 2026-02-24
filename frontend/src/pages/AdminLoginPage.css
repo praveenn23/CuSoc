@@ -1,0 +1,135 @@
+.admin-login-bg {
+    min-height: 100vh;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-login-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 16px;
+    gap: 24px;
+}
+
+.admin-login-logo {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 8px 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.admin-login-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 36px 32px;
+    animation: scaleIn 0.22s ease;
+}
+
+.admin-login-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    margin-bottom: 28px;
+}
+
+.admin-login-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--blue-light);
+    color: var(--blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+.admin-login-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.admin-login-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Password field with icons */
+.admin-pw-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.admin-pw-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--text-tertiary);
+    pointer-events: none;
+    flex-shrink: 0;
+}
+
+.admin-pw-input {
+    padding-left: 40px !important;
+    padding-right: 44px !important;
+}
+
+.admin-pw-toggle {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border-radius: var(--r-sm);
+    transition: color var(--transition);
+}
+
+.admin-pw-toggle:hover {
+    color: var(--text-primary);
+}
+
+.admin-login-back {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--text-tertiary);
+}
+
+.admin-login-back a {
+    color: var(--blue);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.admin-login-back a:hover {
+    text-decoration: underline;
+}
+
+.admin-login-footer {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-align: center;
+}
+
+@media (max-width: 480px) {
+    .admin-login-card {
+        padding: 28px 20px;
+    }
+}
