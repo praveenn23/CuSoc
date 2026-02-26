@@ -11,23 +11,21 @@ const adminRoutes = require('./routes/adminRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ── Middleware ──────────────────────────────────────────────────────────────
-const ALLOWED_ORIGIN = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
-
+// ── CORS ────────────────────────────────────────────────────────────────────
+// Permanent CORS fix: Allow requests from anywhere. 
+// Security is handled by the x-admin-key instead of CORS.
 app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (curl, Postman, server-to-server)
-        if (!origin) return callback(null, true);
-        if (origin.replace(/\/$/, '') === ALLOWED_ORIGIN) return callback(null, true);
-        callback(new Error(`CORS: origin ${origin} not allowed`));
-    },
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
-    credentials: true,
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Handle browser preflight OPTIONS requests explicitly
+app.options('*', cors());
+
 
 // ── Health check ────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
@@ -51,6 +49,13 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Backend server running on http://localhost:${PORT}`);
-});
+// ── Start server (for local dev) ─────────────────────────────────────────────
+// On Vercel, the app is exported below and `listen` is never called.
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
+    app.listen(PORT, () => {
+        console.log(`🚀 Backend server running on http://localhost:${PORT}`);
+    });
+}
+
+// ── Export for Vercel serverless ─────────────────────────────────────────────
+module.exports = app;
