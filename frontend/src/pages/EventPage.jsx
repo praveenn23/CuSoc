@@ -39,15 +39,8 @@ export default function EventPage() {
                 <Navbar />
                 <div className="page-state-center" role="status" aria-live="polite">
                     <div className="page-loading-animation">
-                        <div className="loading-cusoc-logo">
-                            <span style={{ color: '#ea4335' }}>C</span>
-                            <span style={{ color: '#fbbc04' }}>u</span>
-                            <span style={{ color: '#34a853' }}>S</span>
-                            <span style={{ color: '#ea4335' }}>O</span>
-                            <span style={{ color: '#fbbc04' }}>C</span>
-                        </div>
+                        <div className="spinner spinner-blue loading-spinner" />
                     </div>
-                    <div className="spinner spinner-blue loading-spinner" />
                     <p className="page-state-text">Loading event details…</p>
                 </div>
             </>
@@ -120,8 +113,8 @@ export default function EventPage() {
                                         </button>
                                         {!isFull && (
                                             <p className="cta-note">
-                                                 University email required •
-                                                 Instant confirmation
+                                                University email required •
+                                                Instant confirmation
                                             </p>
                                         )}
                                     </div>
@@ -139,14 +132,7 @@ export default function EventPage() {
                     <div className="gdg-strip" />
                     <div className="container footer-inner">
                         <div className="footer-brand">
-                            <div className="footer-logo">
-                                <span style={{ color: '#ea4335' }}>C</span>
-                                <span style={{ color: '#fbbc04' }}>u</span>
-                                <span style={{ color: '#34a853' }}>S</span>
-                                <span style={{ color: '#ea4335' }}>O</span>
-                                <span style={{ color: '#fbbc04' }}>C</span>
-                            </div>
-                            <span>CuSOC: An Open Source Awareness Session — Chandigarh University</span>
+                            <span>CuSOC: Chandigarh University Source of Code- An Open Source Awareness Session — Chandigarh University</span>
                         </div>
                         <p className="footer-copy">
                             © {new Date().getFullYear()} Praveen Kumar, Chandigarh University. All rights reserved.

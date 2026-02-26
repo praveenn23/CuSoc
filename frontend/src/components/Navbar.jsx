@@ -1,3 +1,5 @@
+import cuLogo from '../assets/logos/CU Logo.png';
+import oaaLogo from '../assets/logos/LOGO OAA Black.png';
 import './Navbar.css';
 
 export default function Navbar() {
@@ -6,17 +8,8 @@ export default function Navbar() {
             <div className="gdg-strip" />
             <div className="navbar-inner container">
                 <div className="navbar-brand">
-                    <div className="navbar-logo" aria-label="CuSOC">
-                        <span style={{ color: '#ea4335' }}>C</span>
-                        <span style={{ color: '#fbbc04' }}>u</span>
-                        <span style={{ color: '#34a853' }}>S</span>
-                        <span style={{ color: '#ea4335' }}>O</span>
-                        <span style={{ color: '#fbbc04' }}>C</span>
-                    </div>
-                    <div className="navbar-brand-text">
-                        <span className="navbar-title">CuSOC</span>
-                        <span className="navbar-subtitle">Chandigarh University</span>
-                    </div>
+                    <img src={cuLogo} alt="Chandigarh University" className="nav-logo" />
+                    <img src={oaaLogo} alt="LOGO OAA" className="nav-logo" />
                 </div>
 
                 <nav className="navbar-links" aria-label="Page navigation">

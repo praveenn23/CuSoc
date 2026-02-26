@@ -78,15 +78,6 @@ export default function EventDetails({ event }) {
                     <div className="event-banner-col">
                         <div className="event-banner-card">
                             <div className="event-banner-gradient">
-                                <div className="event-banner-cusoc">
-                                    <span style={{ color: '#ea4335' }}>C</span>
-                                    <span style={{ color: '#fbbc04' }}>u</span>
-                                    <span style={{ color: '#34a853' }}>S</span>
-                                    <span style={{ color: '#ea4335' }}>O</span>
-                                    <span style={{ color: '#fbbc04' }}>C</span>
-                                </div>
-                                {/* <div className="event-banner-label">CuSOC</div> */}
-                                <div className="event-banner-event-name">{title}</div>
                                 <div className="event-banner-dots">
                                     <span />
                                     <span />
