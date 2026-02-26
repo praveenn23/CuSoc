@@ -156,7 +156,7 @@ A roadmap for preparing for GSoC 2026`;
                             <span>CuSOC: Chandigarh University Source of Code- An Open Source Awareness Session — Chandigarh University</span>
                         </div>
                         <p className="footer-copy">
-                            © {new Date().getFullYear()}Chandigarh University. All rights reserved.
+                            © {new Date().getFullYear()} Praveen Kumar Chandigarh University. All rights reserved.
                         </p>
                     </div>
                 </footer>
