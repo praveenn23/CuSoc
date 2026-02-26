@@ -14,12 +14,14 @@
     align-items: center;
     justify-content: space-between;
     height: 72px;
+    padding-left: 16px;
+    padding-right: 24px;
 }
 
 .navbar-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
 }
 
 .nav-logo {

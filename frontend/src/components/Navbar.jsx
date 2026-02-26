@@ -1,15 +1,17 @@
 import cuLogo from '../assets/logos/CU Logo.png';
 import oaaLogo from '../assets/logos/LOGO OAA Black.png';
+import cuIntranetLogo from '../assets/logos/CU-Intranet New Logo- Dark.png';
 import './Navbar.css';
 
 export default function Navbar({ onRegister }) {
     return (
         <header className="navbar" id="top">
             <div className="gdg-strip" />
-            <div className="navbar-inner container">
+            <div className="navbar-inner">
                 <div className="navbar-brand">
                     <img src={cuLogo} alt="Chandigarh University" className="nav-logo" />
                     <img src={oaaLogo} alt="LOGO OAA" className="nav-logo" />
+                    <img src={cuIntranetLogo} alt="CU Intranet" className="nav-logo" />
                 </div>
 
                 <nav className="navbar-links" aria-label="Page navigation">
