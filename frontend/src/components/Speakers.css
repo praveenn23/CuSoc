@@ -25,23 +25,28 @@
 
 .speakers-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 24px;
 }
 
 .speaker-card {
-    padding: 28px 24px;
+    padding: 32px 24px;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 16px;
-    transition: transform var(--transition), box-shadow var(--transition);
+    gap: 20px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    transition: all var(--transition);
+    box-shadow: var(--shadow-sm);
 }
 
 .speaker-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--blue-light);
 }
 
 .speaker-avatar {

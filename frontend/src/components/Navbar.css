@@ -1,16 +1,19 @@
 .navbar {
     position: sticky;
     top: 0;
-    z-index: 100;
-    background: var(--white);
-    box-shadow: var(--shadow-sm);
+    z-index: 1000;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-bottom: 1px solid var(--glass-border);
+    transition: all var(--transition);
 }
 
 .navbar-inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 64px;
+    height: 72px;
 }
 
 .navbar-brand {
@@ -32,18 +35,21 @@
 }
 
 .navbar-links a {
-    padding: 8px 16px;
+    padding: 8px 20px;
     border-radius: var(--r-full);
     font-size: 14px;
     font-weight: 500;
     color: var(--text-secondary);
     transition: all var(--transition);
     text-decoration: none;
+    border: 1px solid transparent;
 }
 
 .navbar-links a:hover {
-    background: var(--blue-light);
+    background: var(--white);
     color: var(--blue);
+    border-color: var(--blue-light);
+    box-shadow: var(--shadow-sm);
     text-decoration: none;
 }
 

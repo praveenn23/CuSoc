@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import EventDetails from '../components/EventDetails';
 import SeatCounter from '../components/SeatCounter';
 import Speakers from '../components/Speakers';
+import Partners from '../components/Partners';
 import RegisterModal from '../components/RegisterModal';
 import { fetchEvent } from '../services/api';
 import './EventPage.css';
@@ -19,7 +20,46 @@ export default function EventPage() {
         setError('');
         try {
             const { data } = await fetchEvent();
-            setEvent(data.event);
+
+            // Structured description with clear headers for reliable parsing
+            const detailedDescription = `Join us for an intensive, hands-on workshop focused on contributing to real-world applications through open-source development. This event is specially designed to bridge the gap between theoretical knowledge and practical implementation by guiding participants through live projects, collaborative workflows, and industry-standard tools.
+
+This is not just a session — it’s a practical roadmap for students and developers who aim to build strong open-source profiles and prepare for global programs like Google Summer of Code (GSoC) 2026.
+
+## What You'll Learn
+Throughout the session, participants will:
+Understand the fundamentals of open-source ecosystems
+Learn how to find and evaluate beginner-friendly repositories
+Get hands-on experience with Git, GitHub workflows, and pull requests
+Understand issues, commits, branching strategies, and code reviews
+Contribute to live projects under expert mentorship
+Collaborate with like-minded developers in a structured environment
+Learn how to build a strong GitHub profile for internships & global programs
+
+## Who Should Attend?
+1st, 2nd, 3rd year B.Tech / B.E students
+Developers interested in open-source
+Anyone aiming for GSoC 2026
+Students who want real-world coding exposure
+
+## GSoC 2026 Insights
+Google Summer of Code is a prestigious global program by Google.
+Indian students receive approximate stipends of $3,000 – $6,000 USD (based on project size).
+Selected contributors receive an official GSoC certificate from Google.
+Experience equivalent to a high-quality international internship.
+Networking with international mentors and global recognition.
+
+## Key Outcomes
+A clear understanding of open-source contribution processes
+Practical experience working on production-level code
+Improved collaboration and version control skills
+A stronger developer profile with real contributions
+A roadmap for preparing for GSoC 2026`;
+
+            setEvent({
+                ...data.event,
+                description: detailedDescription
+            });
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to load event. Please try again.');
         } finally {
@@ -28,6 +68,22 @@ export default function EventPage() {
     }, []);
 
     useEffect(() => { loadEvent(); }, [loadEvent]);
+
+    // ── Reveal Animation Logic ──────────────────────────────────────────────
+    useEffect(() => {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('revealed');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        const sections = document.querySelectorAll('.reveal');
+        sections.forEach(s => observer.observe(s));
+
+        return () => sections.forEach(s => observer.unobserve(s));
+    }, [loading]);
 
     const isFull = event ? event.booked_seats >= event.total_seats : false;
     const remaining = event ? Math.max(0, event.total_seats - event.booked_seats) : 0;
@@ -70,62 +126,27 @@ export default function EventPage() {
 
     return (
         <>
-            <Navbar />
+            <Navbar onRegister={() => setModalOpen(true)} />
 
             {/* ── Event Details Section ── */}
             <main id="main">
-                <EventDetails event={event} />
-
-                {/* ── Seat + Register section ── */}
-                <section className="register-section section" id="register" aria-label="Registration">
-                    <div className="container">
-                        <div className="register-grid">
-                            {/* Seat Counter */}
-                            <SeatCounter
-                                totalSeats={event.total_seats}
-                                bookedSeats={event.booked_seats}
-                            />
-
-                            {/* Register CTA */}
-                            <div className="register-cta card">
-                                <div className="cta-inner">
-                                    <div className="cta-icon">
-                                        <Ticket size={28} />
-                                    </div>
-                                    <div className="cta-content">
-                                        <h2 className="cta-title">
-                                            {isFull ? 'Event is Full' : 'Secure Your Spot'}
-                                        </h2>
-                                        <p className="cta-desc">
-                                            {isFull
-                                                ? 'Unfortunately all seats have been claimed. Stay tuned for future events!'
-                                                : `Only ${remaining} seat${remaining !== 1 ? 's' : ''} remaining. Register now before it's too late!`
-                                            }
-                                        </p>
-                                        <button
-                                            className={`btn btn-lg cta-btn ${isFull ? 'btn-secondary' : 'btn-primary'}`}
-                                            onClick={() => !isFull && setModalOpen(true)}
-                                            disabled={isFull}
-                                            id="btn-open-register"
-                                            aria-label={isFull ? 'Event is full' : 'Open registration form'}
-                                        >
-                                            {isFull ? ' Event Full' : ' Register Now — It\'s Free!'}
-                                        </button>
-                                        {!isFull && (
-                                            <p className="cta-note">
-                                                University email required •
-                                                Instant confirmation
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                <div className="reveal">
+                    <EventDetails
+                        event={event}
+                        bookedSeats={event.booked_seats}
+                        totalSeats={event.total_seats}
+                    />
+                </div>
 
                 {/* ── Speakers ── */}
-                <Speakers />
+                <div className="reveal">
+                    <Speakers />
+                </div>
+
+                {/* ── Community Partners ── */}
+                <div className="reveal">
+                    <Partners />
+                </div>
 
                 {/* ── Footer ── */}
                 <footer className="site-footer">
@@ -135,7 +156,7 @@ export default function EventPage() {
                             <span>CuSOC: Chandigarh University Source of Code- An Open Source Awareness Session — Chandigarh University</span>
                         </div>
                         <p className="footer-copy">
-                            © {new Date().getFullYear()} Praveen Kumar, Chandigarh University. All rights reserved.
+                            © {new Date().getFullYear()}Chandigarh University. All rights reserved.
                         </p>
                     </div>
                 </footer>

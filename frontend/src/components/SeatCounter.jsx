@@ -24,7 +24,7 @@ export default function SeatCounter({ totalSeats, bookedSeats }) {
         <div className="seat-counter card" aria-label="Seat availability">
             <div className="seat-counter-header">
                 <span className="seat-icon"><Users size={20} /></span>
-                <span className="seat-title">Registration Status</span>
+                <span className="seat-title">Available Seats</span>
                 <span className={`chip ${statusClass}`}>{statusText}</span>
             </div>
 

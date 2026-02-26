@@ -2,7 +2,7 @@ import cuLogo from '../assets/logos/CU Logo.png';
 import oaaLogo from '../assets/logos/LOGO OAA Black.png';
 import './Navbar.css';
 
-export default function Navbar() {
+export default function Navbar({ onRegister }) {
     return (
         <header className="navbar" id="top">
             <div className="gdg-strip" />
@@ -15,7 +15,9 @@ export default function Navbar() {
                 <nav className="navbar-links" aria-label="Page navigation">
                     <a href="#about">About</a>
                     <a href="#speakers">Speakers</a>
-                    <a href="#register">Register</a>
+                    <button className="btn btn-primary btn-sm" onClick={onRegister}>
+                        Register Now
+                    </button>
                 </nav>
             </div>
         </header>
