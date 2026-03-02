@@ -10,7 +10,6 @@ const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
 // ── CORS ────────────────────────────────────────────────────────────────────
 // Permanent CORS fix: Allow requests from anywhere. 
 // Security is handled by the x-admin-key instead of CORS.

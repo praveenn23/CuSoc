@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Users, Ticket, BarChart2, LogOut, Trash2, RefreshCw,
     Search, Edit3, Save, X, ChevronDown, ChevronUp, AlertTriangle,
-    CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash,
+    CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash, Mail,
 } from 'lucide-react';
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
-    fetchAdminEvent, updateAdminEvent,
+    fetchAdminEvent, updateAdminEvent, sendTicketEmails,
 } from '../services/adminApi';
 import './AdminPage.css';
 
@@ -42,6 +42,44 @@ function ConfirmModal({ name, email, onConfirm, onCancel, loading }) {
                     </button>
                     <button className="btn btn-danger" onClick={onConfirm} disabled={loading} id="btn-confirm-delete">
                         {loading ? <><span className="spinner" /> Deleting…</> : <><Trash2 size={15} /> Delete</>}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── Send Tickets Confirm Modal ─────────────────────────────────────────────
+function SendTicketsModal({ totalCount, onConfirm, onCancel, loading }) {
+    return (
+        <div className="modal-overlay" onClick={onCancel} role="dialog" aria-modal="true">
+            <div className="modal-box admin-confirm-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="admin-confirm-icon" style={{ background: '#e8f0fe', color: '#1a73e8' }}>
+                    <Mail size={32} />
+                </div>
+                <h3>Send Ticket Emails?</h3>
+                <p>
+                    This will send a <strong>formal ticket confirmation email</strong> to all{' '}
+                    <strong>{totalCount} registered participants</strong>.
+                    Each email includes their unique ticket number, event venue, timings, and instructions.
+                </p>
+                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                    ⚠️ Participants who are already emailed will receive another copy. Confirm only once.
+                </p>
+                <div className="admin-confirm-actions">
+                    <button className="btn btn-secondary" onClick={onCancel} disabled={loading} id="btn-cancel-send-tickets">
+                        Cancel
+                    </button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={onConfirm}
+                        disabled={loading}
+                        id="btn-confirm-send-tickets"
+                        style={{ background: '#1a73e8', borderColor: '#1a73e8' }}
+                    >
+                        {loading
+                            ? <><span className="spinner" /> Sending…</>
+                            : <><Mail size={15} /> Send {totalCount} Tickets</>}
                     </button>
                 </div>
             </div>
@@ -211,6 +249,10 @@ export default function AdminPage({ onLogout }) {
     const [deleting, setDeleting] = useState(false);
     const [deleteMsg, setDeleteMsg] = useState('');
 
+    const [showSendTicketsModal, setShowSendTicketsModal] = useState(false);
+    const [sendingTickets, setSendingTickets] = useState(false);
+    const [ticketMsg, setTicketMsg] = useState('');
+
     const load = useCallback(async () => {
         setLoading(true); setError('');
         try {
@@ -281,6 +323,20 @@ export default function AdminPage({ onLogout }) {
     const handleLogout = () => {
         localStorage.removeItem('admin_token');
         onLogout();
+    };
+
+    const handleSendTickets = async () => {
+        setSendingTickets(true);
+        try {
+            const { data } = await sendTicketEmails();
+            setTicketMsg(`✅ ${data.message}`);
+        } catch (err) {
+            setTicketMsg(`⚠ ${err.response?.data?.error || 'Failed to send ticket emails.'}`);
+        } finally {
+            setSendingTickets(false);
+            setShowSendTicketsModal(false);
+            setTimeout(() => setTicketMsg(''), 6000);
+        }
     };
 
     // ── Sort icon helper ───────────────────────────────────────────────────────
@@ -402,14 +458,25 @@ export default function AdminPage({ onLogout }) {
                                     </button>
                                 )}
                             </div>
+                            <button
+                                className="btn btn-sm"
+                                style={{ background: '#1a73e8', color: 'white', border: 'none', gap: 6 }}
+                                onClick={() => setShowSendTicketsModal(true)}
+                                disabled={regs.length === 0}
+                                id="btn-send-tickets"
+                                title={regs.length === 0 ? 'No registrations to send tickets to' : `Send tickets to ${regs.length} participants`}
+                            >
+                                <Mail size={14} /> Send All Tickets
+                            </button>
                             <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
                                 <RefreshCw size={14} /> Refresh
                             </button>
                         </div>
 
-                        {deleteMsg && (
-                            <div className={`admin-alert mb-0 ${deleteMsg.startsWith('✅') ? 'admin-alert-success' : 'admin-alert-error'}`}>
-                                {deleteMsg}
+                        {(deleteMsg || ticketMsg) && (
+                            <div className={`admin-alert mb-0 ${(deleteMsg || ticketMsg).startsWith('✅') ? 'admin-alert-success' : 'admin-alert-error'
+                                }`}>
+                                {deleteMsg || ticketMsg}
                             </div>
                         )}
 
@@ -496,6 +563,15 @@ export default function AdminPage({ onLogout }) {
                     onConfirm={handleDelete}
                     onCancel={() => setDeleteTarget(null)}
                     loading={deleting}
+                />
+            )}
+
+            {showSendTicketsModal && (
+                <SendTicketsModal
+                    totalCount={regs.length}
+                    onConfirm={handleSendTickets}
+                    onCancel={() => !sendingTickets && setShowSendTicketsModal(false)}
+                    loading={sendingTickets}
                 />
             )}
         </div>

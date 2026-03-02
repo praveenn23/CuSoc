@@ -12,6 +12,7 @@ if (!supabaseUrl || !supabaseKey) {
   );
 }
 
+
 const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseKey || 'placeholder-key'

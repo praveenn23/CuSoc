@@ -8,6 +8,7 @@ const {
     getEvent,
     updateEvent,
     adminLogin,
+    sendTickets,
 } = require('../controllers/adminController');
 
 // Public — login (no auth middleware)
@@ -21,5 +22,6 @@ router.get('/registrations', getRegistrations);
 router.delete('/registrations/:id', deleteRegistration);
 router.get('/event', getEvent);
 router.put('/event', updateEvent);
+router.post('/send-tickets', sendTickets);
 
 module.exports = router;

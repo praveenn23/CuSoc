@@ -33,5 +33,6 @@ export const fetchRegistrations = () => adminApi.get('/registrations');
 export const deleteRegistration = (id) => adminApi.delete(`/registrations/${id}`);
 export const fetchAdminEvent = () => adminApi.get('/event');
 export const updateAdminEvent = (payload) => adminApi.put('/event', payload);
+export const sendTicketEmails = () => adminApi.post('/send-tickets');
 
 export default adminApi;

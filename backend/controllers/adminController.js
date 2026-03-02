@@ -1,181 +1,435 @@
 const supabase = require('../config/supabase');
+const transporter = require('../config/mailer');
 
 // ── GET /admin/stats ────────────────────────────────────────────────────────
 const getStats = async (req, res) => {
-    try {
-        const { data: event, error: eventErr } = await supabase
-            .from('event')
-            .select('*')
-            .maybeSingle();
-        if (eventErr) throw eventErr;
+  try {
+    const { data: event, error: eventErr } = await supabase
+      .from('event')
+      .select('*')
+      .maybeSingle();
+    if (eventErr) throw eventErr;
 
-        const { count, error: countErr } = await supabase
-            .from('registrations')
-            .select('*', { count: 'exact', head: true });
-        if (countErr) throw countErr;
+    const { count, error: countErr } = await supabase
+      .from('registrations')
+      .select('*', { count: 'exact', head: true });
+    if (countErr) throw countErr;
 
-        return res.json({
-            success: true,
-            stats: {
-                totalSeats: event?.total_seats ?? 0,
-                bookedSeats: event?.booked_seats ?? 0,
-                remainingSeats: (event?.total_seats ?? 0) - (event?.booked_seats ?? 0),
-                totalRegistrations: count ?? 0,
-            },
-        });
-    } catch (err) {
-        console.error('getStats error:', err.message);
-        return res.status(500).json({ error: 'Failed to fetch stats' });
-    }
+    return res.json({
+      success: true,
+      stats: {
+        totalSeats: event?.total_seats ?? 0,
+        bookedSeats: event?.booked_seats ?? 0,
+        remainingSeats: (event?.total_seats ?? 0) - (event?.booked_seats ?? 0),
+        totalRegistrations: count ?? 0,
+      },
+    });
+  } catch (err) {
+    console.error('getStats error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch stats' });
+  }
 };
 
 // ── GET /admin/registrations ────────────────────────────────────────────────
 const getRegistrations = async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('registrations')
-            .select('*')
-            .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('registrations')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        return res.json({ success: true, registrations: data });
-    } catch (err) {
-        console.error('getRegistrations error:', err.message);
-        return res.status(500).json({ error: 'Failed to fetch registrations' });
-    }
+    if (error) throw error;
+    return res.json({ success: true, registrations: data });
+  } catch (err) {
+    console.error('getRegistrations error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch registrations' });
+  }
 };
 
 // ── DELETE /admin/registrations/:id ─────────────────────────────────────────
 const deleteRegistration = async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!id) return res.status(400).json({ error: 'Registration ID required' });
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Registration ID required' });
 
-        // ── 1. Confirm the registration exists ─────────────────────────────────
-        const { data: reg, error: fetchErr } = await supabase
-            .from('registrations')
-            .select('id')
-            .eq('id', id)
-            .maybeSingle();
+    // ── 1. Confirm the registration exists ─────────────────────────────────
+    const { data: reg, error: fetchErr } = await supabase
+      .from('registrations')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
 
-        if (fetchErr) throw fetchErr;
-        if (!reg) return res.status(404).json({ error: 'Registration not found' });
+    if (fetchErr) throw fetchErr;
+    if (!reg) return res.status(404).json({ error: 'Registration not found' });
 
-        // ── 2. Delete the registration row ─────────────────────────────────────
-        const { error: delErr } = await supabase
-            .from('registrations')
-            .delete()
-            .eq('id', id);
+    // ── 2. Delete the registration row ─────────────────────────────────────
+    const { error: delErr } = await supabase
+      .from('registrations')
+      .delete()
+      .eq('id', id);
 
-        if (delErr) throw delErr;
+    if (delErr) throw delErr;
 
-        // ── 3. Decrement booked_seats directly — NO RPC needed ─────────────────
-        // Fetch current count to calculate new value (floor at 0)
-        const { data: eventRow, error: evFetchErr } = await supabase
-            .from('event')
-            .select('id, booked_seats')
-            .maybeSingle();
+    // ── 3. Decrement booked_seats directly — NO RPC needed ─────────────────
+    // Fetch current count to calculate new value (floor at 0)
+    const { data: eventRow, error: evFetchErr } = await supabase
+      .from('event')
+      .select('id, booked_seats')
+      .maybeSingle();
 
-        if (evFetchErr) {
-            console.error('Could not fetch event for seat decrement:', evFetchErr.message);
-        } else if (eventRow) {
-            const newCount = Math.max(0, (eventRow.booked_seats || 0) - 1);
-            const { error: updateErr } = await supabase
-                .from('event')
-                .update({ booked_seats: newCount })
-                .eq('id', eventRow.id);
+    if (evFetchErr) {
+      console.error('Could not fetch event for seat decrement:', evFetchErr.message);
+    } else if (eventRow) {
+      const newCount = Math.max(0, (eventRow.booked_seats || 0) - 1);
+      const { error: updateErr } = await supabase
+        .from('event')
+        .update({ booked_seats: newCount })
+        .eq('id', eventRow.id);
 
-            if (updateErr) {
-                console.error('booked_seats decrement error:', updateErr.message);
-            } else {
-                console.log(`✅ booked_seats decremented → ${newCount}`);
-            }
-        }
-
-        return res.json({ success: true, message: 'Registration deleted successfully' });
-    } catch (err) {
-        console.error('deleteRegistration error:', err.message);
-        return res.status(500).json({ error: 'Failed to delete registration' });
+      if (updateErr) {
+        console.error('booked_seats decrement error:', updateErr.message);
+      } else {
+        console.log(`✅ booked_seats decremented → ${newCount}`);
+      }
     }
+
+    return res.json({ success: true, message: 'Registration deleted successfully' });
+  } catch (err) {
+    console.error('deleteRegistration error:', err.message);
+    return res.status(500).json({ error: 'Failed to delete registration' });
+  }
 };
 
 // ── GET /admin/event ─────────────────────────────────────────────────────────
 const getEvent = async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('event').select('*').maybeSingle();
-        if (error) throw error;
-        if (!data) return res.status(404).json({ error: 'Event not found' });
-        return res.json({ success: true, event: data });
-    } catch (err) {
-        console.error('admin getEvent error:', err.message);
-        return res.status(500).json({ error: 'Failed to fetch event' });
-    }
+  try {
+    const { data, error } = await supabase.from('event').select('*').maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Event not found' });
+    return res.json({ success: true, event: data });
+  } catch (err) {
+    console.error('admin getEvent error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch event' });
+  }
 };
 
 // ── PUT /admin/event ─────────────────────────────────────────────────────────
 const updateEvent = async (req, res) => {
-    try {
-        const { title, description, date, time, venue, total_seats } = req.body;
+  try {
+    const { title, description, date, time, venue, total_seats } = req.body;
 
-        if (!title || !date || !venue || !total_seats) {
-            return res.status(400).json({ error: 'title, date, venue, and total_seats are required' });
-        }
-
-        if (isNaN(parseInt(total_seats)) || parseInt(total_seats) < 1) {
-            return res.status(400).json({ error: 'total_seats must be a positive number' });
-        }
-
-        const { data: existing, error: fetchErr } = await supabase
-            .from('event')
-            .select('id, booked_seats')
-            .maybeSingle();
-
-        if (fetchErr) throw fetchErr;
-        if (!existing) return res.status(404).json({ error: 'Event not found' });
-
-        const newTotalSeats = parseInt(total_seats);
-        if (newTotalSeats < existing.booked_seats) {
-            return res.status(400).json({
-                error: `Cannot set total seats (${newTotalSeats}) below already booked seats (${existing.booked_seats})`,
-            });
-        }
-
-        const { data: updated, error: updateErr } = await supabase
-            .from('event')
-            .update({
-                title: title.trim(),
-                description: description?.trim() || null,
-                date,
-                time: time?.trim() || null,
-                venue: venue.trim(),
-                total_seats: newTotalSeats,
-            })
-            .eq('id', existing.id)
-            .select()
-            .single();
-
-        if (updateErr) throw updateErr;
-
-        return res.json({ success: true, event: updated, message: 'Event updated successfully' });
-    } catch (err) {
-        console.error('updateEvent error:', err.message);
-        return res.status(500).json({ error: 'Failed to update event' });
+    if (!title || !date || !venue || !total_seats) {
+      return res.status(400).json({ error: 'title, date, venue, and total_seats are required' });
     }
+
+    if (isNaN(parseInt(total_seats)) || parseInt(total_seats) < 1) {
+      return res.status(400).json({ error: 'total_seats must be a positive number' });
+    }
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from('event')
+      .select('id, booked_seats')
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+    if (!existing) return res.status(404).json({ error: 'Event not found' });
+
+    const newTotalSeats = parseInt(total_seats);
+    if (newTotalSeats < existing.booked_seats) {
+      return res.status(400).json({
+        error: `Cannot set total seats (${newTotalSeats}) below already booked seats (${existing.booked_seats})`,
+      });
+    }
+
+    const { data: updated, error: updateErr } = await supabase
+      .from('event')
+      .update({
+        title: title.trim(),
+        description: description?.trim() || null,
+        date,
+        time: time?.trim() || null,
+        venue: venue.trim(),
+        total_seats: newTotalSeats,
+      })
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    return res.json({ success: true, event: updated, message: 'Event updated successfully' });
+  } catch (err) {
+    console.error('updateEvent error:', err.message);
+    return res.status(500).json({ error: 'Failed to update event' });
+  }
 };
 
 // ── POST /admin/login ────────────────────────────────────────────────────────
 const adminLogin = async (req, res) => {
-    const { password } = req.body;
-    const secret = process.env.ADMIN_SECRET_KEY;
+  const { password } = req.body;
+  const secret = process.env.ADMIN_SECRET_KEY;
 
-    if (!password) return res.status(400).json({ error: 'Password required' });
-    if (!secret) return res.status(500).json({ error: 'Admin not configured on server' });
+  if (!password) return res.status(400).json({ error: 'Password required' });
+  if (!secret) return res.status(500).json({ error: 'Admin not configured on server' });
 
-    if (password !== secret) {
-        return res.status(401).json({ error: 'Invalid admin password' });
-    }
+  if (password !== secret) {
+    return res.status(401).json({ error: 'Invalid admin password' });
+  }
 
-    return res.json({ success: true, token: secret });
+  return res.json({ success: true, token: secret });
 };
 
-module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin };
+// ── POST /admin/send-tickets ─────────────────────────────────────────────────
+// Sends a formal ticket confirmation email to every registered participant.
+const sendTickets = async (req, res) => {
+  try {
+    // 1. Fetch all registrations
+    const { data: registrations, error: regErr } = await supabase
+      .from('registrations')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (regErr) throw regErr;
+
+    if (!registrations || registrations.length === 0) {
+      return res.status(400).json({ error: 'No registrations found to send tickets to.' });
+    }
+
+    const targetRegistrations = registrations;
+
+    // 2. Fetch event details
+    const { data: event, error: evErr } = await supabase
+      .from('event')
+      .select('*')
+      .maybeSingle();
+    if (evErr) throw evErr;
+    if (!event) return res.status(404).json({ error: 'Event not found.' });
+
+    const eventDate = new Date(event.date).toLocaleDateString('en-IN', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+    const eventTime = event.time || new Date(event.date).toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit', hour12: true,
+    });
+
+    // 3. Send emails with concurrency cap of 5
+    const CONCURRENCY = 5;
+    const results = { sent: 0, failed: 0, errors: [] };
+
+    for (let i = 0; i < targetRegistrations.length; i += CONCURRENCY) {
+      const chunk = targetRegistrations.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        chunk.map(async (reg) => {
+          // Last 4 chars of UUID (uppercase)
+          const ticketNo = `EVT-${reg.id.slice(-4).toUpperCase()}`;
+          const department = reg.course || 'N/A';
+
+          const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Google Sans',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0"
+        style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 28px rgba(60,64,67,.14);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#1a73e8 0%,#0d47a1 100%);padding:36px 32px;text-align:center;">
+            <div style="display:inline-block;background:white;border-radius:12px;padding:8px 18px;margin-bottom:16px;">
+              <span style="font-size:24px;font-weight:700;letter-spacing:-1px;">
+                <span style="color:#ea4335">C</span><span style="color:#fbbc04">u</span><span style="color:#34a853">S</span><span style="color:#ea4335">O</span><span style="color:#fbbc04">C</span>
+              </span>
+            </div>
+            <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;line-height:1.3;">🎟 Event Ticket Confirmation</h1>
+            <p style="color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px;">Your ticket has been issued successfully!</p>
+          </td>
+        </tr>
+
+        <!-- Greeting -->
+        <tr>
+          <td style="background:#e8f0fe;padding:20px 32px;text-align:center;border-bottom:1px solid #c5d8fb;">
+            <p style="margin:0;color:#1a73e8;font-size:15px;font-weight:600;">Dear ${reg.name},</p>
+            <p style="margin:6px 0 0;color:#3c4043;font-size:14px;line-height:1.6;">
+              Greetings from the Organizing Team!<br />
+              Thank you for registering for <strong>${event.title}</strong>.<br />
+              Your registration has been successfully confirmed.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Ticket Card -->
+        <tr>
+          <td style="padding:28px 32px 8px;">
+            <h2 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#202124;">🎫 Event Ticket Details</h2>
+            <table width="100%" cellpadding="0" cellspacing="0"
+              style="background:#f8f9fa;border-radius:12px;border:2px dashed #c5d8fb;overflow:hidden;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <!-- Ticket No -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+                    <tr>
+                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;padding-bottom:2px;">Ticket No.</td>
+                      <td style="font-size:18px;font-weight:700;color:#1a73e8;letter-spacing:1px;">${ticketNo}</td>
+                    </tr>
+                  </table>
+                  <hr style="border:none;border-top:1px solid #e0e0e0;margin:0 0 14px;" />
+                  <!-- Name -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+                    <tr>
+                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">Name</td>
+                      <td style="font-size:14px;font-weight:600;color:#202124;">${reg.name}</td>
+                    </tr>
+                  </table>
+                  <!-- Department -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+                    <tr>
+                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">Department</td>
+                      <td style="font-size:14px;font-weight:500;color:#202124;">${department}</td>
+                    </tr>
+                  </table>
+                  <!-- University Email -->
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">University Email</td>
+                      <td style="font-size:14px;font-weight:500;color:#202124;">${reg.email}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Event Details -->
+        <tr>
+          <td style="padding:20px 32px 8px;">
+            <h2 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#202124;">📌 Event Details</h2>
+            <!-- Date -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+              <tr>
+                <td width="40" valign="top">
+                  <div style="width:36px;height:36px;background:#e8f0fe;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">📅</div>
+                </td>
+                <td style="padding-left:12px;vertical-align:middle;">
+                  <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Date</div>
+                  <div style="font-size:14px;font-weight:500;color:#202124;">${eventDate}</div>
+                </td>
+              </tr>
+            </table>
+            <!-- Time -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+              <tr>
+                <td width="40" valign="top">
+                  <div style="width:36px;height:36px;background:#e6f4ea;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">🕐</div>
+                </td>
+                <td style="padding-left:12px;vertical-align:middle;">
+                  <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Time</div>
+                  <div style="font-size:14px;font-weight:500;color:#202124;">${eventTime}</div>
+                </td>
+              </tr>
+            </table>
+            <!-- Venue -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+              <tr>
+                <td width="40" valign="top">
+                  <div style="width:36px;height:36px;background:#fce8e6;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">📍</div>
+                </td>
+                <td style="padding-left:12px;vertical-align:middle;">
+                  <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Venue</div>
+                  <div style="font-size:14px;font-weight:500;color:#202124;">${event.venue}</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Important Instructions -->
+        <tr>
+          <td style="padding:16px 32px 24px;">
+            <div style="background:#fffde7;border-radius:12px;padding:18px 22px;border:1px solid #ffe082;">
+              <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#e65100;">📋 Important Instructions</p>
+              <ul style="margin:0;padding-left:18px;color:#3c4043;font-size:13px;line-height:2;">
+                <li>This email serves as your <strong>official event entry ticket</strong>.</li>
+                <li>The Ticket Number is generated from the last 4 digits of your unique registration UUID.</li>
+                <li>Your University Email ID will be <strong>verified at the venue</strong> by the organizing team.</li>
+                <li>Duty Leave (DL) attendance will be granted only after successful verification at the venue.</li>
+                <li>Please carry your <strong>University ID Card</strong> for identity confirmation.</li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Discrepancy note -->
+        <tr>
+          <td style="padding:0 32px 24px;text-align:center;">
+            <p style="margin:0;font-size:13px;color:#5f6368;line-height:1.7;">
+              Kindly ensure that the above details are correct.<br />
+              In case of any discrepancy, contact the organizing team before the event date.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Best Regards -->
+        <tr>
+          <td style="padding:0 32px 24px;background:#f8f9fa;border-top:1px solid #e0e0e0;">
+            <p style="margin:16px 0 4px;font-size:14px;font-weight:600;color:#202124;">We look forward to your active participation!</p>
+            <p style="margin:0;font-size:13px;color:#5f6368;line-height:1.8;">
+              Best Regards,<br />
+              <strong>CuSOC Organizing Team</strong><br />
+              ${event.title}<br />
+              Chandigarh University Student Chapter
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer strip -->
+        <tr>
+          <td style="height:4px;background:linear-gradient(90deg,#ea4335 25%,#fbbc04 25% 50%,#34a853 50% 75%,#1a73e8 75%);"></td>
+        </tr>
+        <tr>
+          <td style="padding:14px 32px;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9aa0a6;">
+              © ${new Date().getFullYear()} CuSOC, Chandigarh University — See you there! 🎉
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+          try {
+            await transporter.sendMail({
+              from: `"CuSOC Events" <${process.env.EMAIL_FROM}>`,
+              to: reg.email,
+              subject: `🎟 Your Event Ticket Confirmation – CUSOC | ${ticketNo}`,
+              html,
+            });
+            results.sent++;
+          } catch (mailErr) {
+            results.failed++;
+            results.errors.push({ email: reg.email, error: mailErr.message });
+            console.error(`Ticket email failed for ${reg.email}:`, mailErr.message);
+          }
+        })
+      );
+    }
+
+    console.log(`✅ Ticket blast done — sent: ${results.sent}, failed: ${results.failed}`);
+    return res.json({
+      success: true,
+      message: `Ticket emails dispatched. Sent: ${results.sent}, Failed: ${results.failed}.`,
+      sent: results.sent,
+      failed: results.failed,
+      ...(results.errors.length ? { errors: results.errors } : {}),
+    });
+  } catch (err) {
+    console.error('sendTickets error:', err.message);
+    return res.status(500).json({ error: 'Failed to send ticket emails.' });
+  }
+};
+
+module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets };
