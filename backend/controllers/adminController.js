@@ -181,17 +181,30 @@ const adminLogin = async (req, res) => {
 
 // ── POST /admin/send-tickets ─────────────────────────────────────────────────
 // Sends a formal ticket confirmation email to every registered participant.
+// Only sends to those where ticket_sent_at IS NULL (not yet emailed).
 const sendTickets = async (req, res) => {
   try {
-    // 1. Fetch all registrations
+    // 1. Fetch only registrations that have NOT been sent a ticket yet
     const { data: registrations, error: regErr } = await supabase
       .from('registrations')
       .select('*')
+      .is('ticket_sent_at', null)          // ← DEDUP: skip already-sent
       .order('created_at', { ascending: true });
     if (regErr) throw regErr;
 
+    // Also get total count for the response summary
+    const { count: totalCount } = await supabase
+      .from('registrations')
+      .select('*', { count: 'exact', head: true });
+
+    const alreadySent = (totalCount ?? 0) - (registrations?.length ?? 0);
+
     if (!registrations || registrations.length === 0) {
-      return res.status(400).json({ error: 'No registrations found to send tickets to.' });
+      return res.json({
+        success: true,
+        message: `All ${totalCount} participants have already received their ticket emails. No new emails sent.`,
+        sent: 0, failed: 0, skipped: alreadySent,
+      });
     }
 
     const targetRegistrations = registrations;
@@ -446,6 +459,13 @@ const sendTickets = async (req, res) => {
               html,
             });
             results.sent++;
+
+            // ── Stamp ticket_sent_at so this person is never emailed again ──
+            await supabase
+              .from('registrations')
+              .update({ ticket_sent_at: new Date().toISOString() })
+              .eq('id', reg.id);
+
           } catch (mailErr) {
             results.failed++;
             results.errors.push({ email: reg.email, error: mailErr.message });
@@ -455,12 +475,14 @@ const sendTickets = async (req, res) => {
       );
     }
 
-    console.log(`✅ Ticket blast done — sent: ${results.sent}, failed: ${results.failed}`);
+    const skipped = alreadySent;
+    console.log(`✅ Ticket blast done — sent: ${results.sent}, failed: ${results.failed}, skipped (already sent): ${skipped}`);
     return res.json({
       success: true,
-      message: `Ticket emails dispatched. Sent: ${results.sent}, Failed: ${results.failed}.`,
+      message: `Tickets sent to ${results.sent} new participant(s). ${skipped > 0 ? `${skipped} already emailed (skipped).` : ''} Failed: ${results.failed}.`,
       sent: results.sent,
       failed: results.failed,
+      skipped,
       ...(results.errors.length ? { errors: results.errors } : {}),
     });
   } catch (err) {
