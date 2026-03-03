@@ -355,30 +355,67 @@ const sendTickets = async (req, res) => {
                 <li>Your University Email ID will be <strong>verified at the venue</strong> by the organizing team.</li>
                 <li>Duty Leave (DL) attendance will be granted only after successful verification at the venue.</li>
                 <li>Please carry your <strong>University ID Card</strong> for identity confirmation.</li>
+                <li>Kindly ensure that the above details are correct. In case of any discrepancy, contact the organizing team <strong>before the event date</strong>.</li>
               </ul>
             </div>
           </td>
         </tr>
 
-        <!-- Discrepancy note -->
+        <!-- ACO Approved Badge -->
         <tr>
-          <td style="padding:0 32px 24px;text-align:center;">
-            <p style="margin:0;font-size:13px;color:#5f6368;line-height:1.7;">
-              Kindly ensure that the above details are correct.<br />
-              In case of any discrepancy, contact the organizing team before the event date.
-            </p>
+          <td style="padding:0 32px 20px;">
+            <div style="background:#e8f5e9;border-radius:12px;padding:16px 20px;border:1px solid #a5d6a7;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="40" valign="top" style="text-align:center;font-size:22px;padding-top:2px;">✅</td>
+                  <td style="padding-left:12px;vertical-align:top;">
+                    <div style="font-size:13px;font-weight:700;color:#1b5e20;margin-bottom:4px;">ACO Approval — University Level Co-Curricular Club</div>
+                    <div style="font-size:12px;color:#2e7d32;line-height:1.7;margin-bottom:12px;">
+                      For applying Duty Leave (DL) for this event, kindly take prior approval from ACO / Assistant Dean OAA on the mentioned category's duty leave format.
+                    </div>
+                    <a href="https://drive.google.com/file/d/11oQHrEJwYyaD52yndoVyRtQ0MGvCktJx/view?usp=sharing"
+                      target="_blank"
+                      style="display:inline-block;background:#1b5e20;color:#ffffff;font-size:12px;font-weight:700;padding:9px 18px;border-radius:8px;text-decoration:none;letter-spacing:.3px;">
+                      📄 View DL Format Document
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+
+        <!-- WhatsApp Group -->
+        <tr>
+          <td style="padding:0 32px 24px;">
+            <div style="background:#e7f7ee;border-radius:12px;padding:18px 22px;border:1px solid #b2dfdb;text-align:center;">
+              <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#00695c;">💬 Join Our WhatsApp Group</p>
+              <p style="margin:0 0 14px;font-size:13px;color:#3c4043;line-height:1.6;">
+                Stay updated with event announcements, schedules, and last-minute changes.<br />
+                Join our official WhatsApp group for participants:
+              </p>
+              <a href="https://chat.whatsapp.com/Jo4tCxHlsmfIU5wwL2rcnb?mode=gi_t"
+                target="_blank"
+                style="display:inline-block;background:#25d366;color:#ffffff;font-size:14px;font-weight:700;padding:12px 28px;border-radius:50px;text-decoration:none;letter-spacing:.3px;">
+                🟢 Join WhatsApp Group
+              </a>
+              <p style="margin:10px 0 0;font-size:11px;color:#9aa0a6;">
+                Or copy link: chat.whatsapp.com/Jo4tCxHlsmfIU5wwL2rcnb
+              </p>
+            </div>
           </td>
         </tr>
 
         <!-- Best Regards -->
         <tr>
           <td style="padding:0 32px 24px;background:#f8f9fa;border-top:1px solid #e0e0e0;">
-            <p style="margin:16px 0 4px;font-size:14px;font-weight:600;color:#202124;">We look forward to your active participation!</p>
-            <p style="margin:0;font-size:13px;color:#5f6368;line-height:1.8;">
+            <p style="margin:16px 0 6px;font-size:14px;font-weight:600;color:#202124;">We look forward to your active participation!</p>
+            <p style="margin:0;font-size:13px;color:#5f6368;line-height:2;">
               Best Regards,<br />
               <strong>CuSOC Organizing Team</strong><br />
               ${event.title}<br />
-              Chandigarh University Student Chapter
+              Chandigarh University Student Chapter<br />
+              <span style="color:#9aa0a6;font-size:12px;">Approved under: University Level (Co-Curricular Clubs) | ACO Certified</span>
             </p>
           </td>
         </tr>
