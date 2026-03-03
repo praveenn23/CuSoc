@@ -1,7 +1,7 @@
 const supabase = require('../config/supabase');
 const transporter = require('../config/mailer');
 
-const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN || 'cu.edu.in';
+const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN || 'cuchd.in';
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES) || 10;
 
 /**
