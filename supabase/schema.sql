@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS registrations (
   -- one registration per email
   phone TEXT NOT NULL,
   course TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  ticket_sent_at TIMESTAMPTZ DEFAULT NULL,
+  attended_at TIMESTAMPTZ DEFAULT NULL
 );
 -- Fast email lookups (duplicate check, OTP match)
 CREATE INDEX IF NOT EXISTS idx_registrations_email ON registrations(email);

@@ -491,4 +491,84 @@ const sendTickets = async (req, res) => {
   }
 };
 
-module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets };
+// ── POST /admin/mark-attendance ──────────────────────────────────────────────
+// Accepts { ticketCode: "XXXX" } (the last 4 chars of the registration UUID).
+// e.g. UUID ending in "...a1b2" → ticketCode = "A1B2" → ticket email shows EVT-A1B2
+const markAttendance = async (req, res) => {
+  try {
+    const { ticketCode } = req.body;
+
+    if (!ticketCode || typeof ticketCode !== 'string') {
+      return res.status(400).json({ error: 'ticketCode is required.' });
+    }
+
+    const code = ticketCode.trim().toUpperCase();
+
+    if (!/^[A-Z0-9]{4}$/.test(code)) {
+      return res.status(400).json({ error: 'Ticket code must be exactly 4 alphanumeric characters.' });
+    }
+
+    // ── 1. Fetch ALL registrations and match in JS ──────────────────────────
+    // NOTE: We CANNOT use .ilike() on a UUID column — Postgres UUID type does
+    // not support the ~~ (LIKE) operator, which causes the error:
+    //   "operator does not exist: uuid ~~* unknown"
+    // Since registrations are bounded (~few hundred max), fetching all and
+    // filtering in JS is perfectly fast and safe.
+    const { data: allRegs, error: fetchErr } = await supabase
+      .from('registrations')
+      .select('id, name, email, phone, course, attended_at');
+
+    if (fetchErr) throw fetchErr;
+
+    // Match by last 4 chars of the UUID string (e.g. "...abcd" → "ABCD")
+    const reg = (allRegs || []).find(
+      (r) => r.id.slice(-4).toUpperCase() === code
+    );
+
+    if (!reg) {
+      return res.status(404).json({
+        error: `No registration found with ticket code EVT-${code}. Please double-check the code.`,
+      });
+    }
+
+    // ── 2. Duplicate scan check ─────────────────────────────────────────────
+    if (reg.attended_at) {
+      return res.status(409).json({
+        error: 'Already marked present!',
+        alreadyPresent: true,
+        registration: {
+          name: reg.name,
+          email: reg.email,
+          course: reg.course,
+          attendedAt: reg.attended_at,
+          ticketCode: `EVT-${code}`,
+        },
+      });
+    }
+
+    // ── 3. Mark as attended ─────────────────────────────────────────────────
+    const { error: updateErr } = await supabase
+      .from('registrations')
+      .update({ attended_at: new Date().toISOString() })
+      .eq('id', reg.id);
+
+    if (updateErr) throw updateErr;
+
+    console.log(`✅ Attendance marked for ${reg.name} (EVT-${code})`);
+    return res.json({
+      success: true,
+      message: `Attendance marked for ${reg.name}`,
+      registration: {
+        name: reg.name,
+        email: reg.email,
+        course: reg.course,
+        ticketCode: `EVT-${code}`,
+      },
+    });
+  } catch (err) {
+    console.error('markAttendance error:', err.message);
+    return res.status(500).json({ error: 'Failed to mark attendance.' });
+  }
+};
+
+module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance };

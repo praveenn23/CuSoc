@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Users, Ticket, BarChart2, LogOut, Trash2, RefreshCw,
     Search, Edit3, Save, X, ChevronDown, ChevronUp, AlertTriangle,
     CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash, Mail,
+    ScanLine, UserCheck,
 } from 'lucide-react';
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
-    fetchAdminEvent, updateAdminEvent, sendTicketEmails,
+    fetchAdminEvent, updateAdminEvent, sendTicketEmails, markAttendance,
 } from '../services/adminApi';
 import './AdminPage.css';
 
@@ -243,7 +244,7 @@ export default function AdminPage({ onLogout }) {
     const [search, setSearch] = useState('');
     const [sortKey, setSortKey] = useState('created_at');
     const [sortAsc, setSortAsc] = useState(false);
-    const [activeTab, setActiveTab] = useState('registrations'); // 'registrations' | 'event'
+    const [activeTab, setActiveTab] = useState('registrations'); // 'registrations' | 'event' | 'attendance'
 
     const [deleteTarget, setDeleteTarget] = useState(null); // { id, name, email }
     const [deleting, setDeleting] = useState(false);
@@ -252,6 +253,15 @@ export default function AdminPage({ onLogout }) {
     const [showSendTicketsModal, setShowSendTicketsModal] = useState(false);
     const [sendingTickets, setSendingTickets] = useState(false);
     const [ticketMsg, setTicketMsg] = useState('');
+
+    // ── Attendance Scanner State ───────────────────────────────────────────────
+    const [ticketInput, setTicketInput] = useState('');
+    const [attendFilter, setAttendFilter] = useState('all'); // 'all' | 'present' | 'absent'
+    const [scanLoading, setScanLoading] = useState(false);
+    const [scanResult, setScanResult] = useState(null); // { type: 'success'|'already'|'error', data }
+    const [scanLog, setScanLog] = useState([]); // recent scans
+    const [attendedCount, setAttendedCount] = useState(null);
+    const ticketInputRef = useRef(null);
 
     const load = useCallback(async () => {
         setLoading(true); setError('');
@@ -273,6 +283,60 @@ export default function AdminPage({ onLogout }) {
 
     useEffect(() => { load(); }, [load]);
 
+    // Focus ticket input when switching to attendance tab
+    useEffect(() => {
+        if (activeTab === 'attendance' && ticketInputRef.current) {
+            ticketInputRef.current.focus();
+        }
+    }, [activeTab]);
+
+    // ── Fetch attended count ───────────────────────────────────────────────────
+    const loadAttendedCount = useCallback(async () => {
+        try {
+            const { data } = await fetchRegistrations();
+            const count = (data.registrations || []).filter((r) => r.attended_at).length;
+            setAttendedCount(count);
+        } catch {
+            // silently ignore
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'attendance') loadAttendedCount();
+    }, [activeTab, loadAttendedCount]);
+
+    // ── Handle ticket scan submission ──────────────────────────────────────────
+    const handleScan = async (e) => {
+        e.preventDefault();
+        const code = ticketInput.trim().toUpperCase();
+        if (!code || code.length !== 4) {
+            setScanResult({ type: 'error', message: 'Please enter exactly 4 characters.' });
+            return;
+        }
+        setScanLoading(true);
+        setScanResult(null);
+        try {
+            const { data } = await markAttendance(code);
+            setScanResult({ type: 'success', data: data.registration, message: data.message });
+            setScanLog((prev) => [{ type: 'success', code, name: data.registration.name, time: new Date() }, ...prev.slice(0, 19)]);
+            setAttendedCount((prev) => (prev !== null ? prev + 1 : null));
+        } catch (err) {
+            const res = err.response?.data;
+            if (res?.alreadyPresent) {
+                setScanResult({ type: 'already', data: res.registration, message: res.error });
+                setScanLog((prev) => [{ type: 'already', code, name: res.registration?.name, time: new Date() }, ...prev.slice(0, 19)]);
+            } else {
+                setScanResult({ type: 'error', message: res?.error || 'Scan failed. Try again.' });
+                setScanLog((prev) => [{ type: 'error', code, time: new Date() }, ...prev.slice(0, 19)]);
+            }
+        } finally {
+            setScanLoading(false);
+            setTicketInput('');
+            if (ticketInputRef.current) ticketInputRef.current.focus();
+        }
+    };
+
+
     // ── Sorting & Filtering ────────────────────────────────────────────────────
     const toggleSort = (key) => {
         if (sortKey === key) setSortAsc(!sortAsc);
@@ -282,12 +346,17 @@ export default function AdminPage({ onLogout }) {
     const filtered = regs
         .filter((r) => {
             const q = search.toLowerCase();
-            return (
+            const textMatch = (
                 r.name.toLowerCase().includes(q) ||
                 r.email.toLowerCase().includes(q) ||
                 (r.phone || '').includes(q) ||
                 (r.course || '').toLowerCase().includes(q)
             );
+            const attendMatch =
+                attendFilter === 'all' ? true :
+                    attendFilter === 'present' ? !!r.attended_at :
+                        !r.attended_at;
+            return textMatch && attendMatch;
         })
         .sort((a, b) => {
             const av = a[sortKey] || '';
@@ -296,6 +365,9 @@ export default function AdminPage({ onLogout }) {
                 ? av.localeCompare(bv)
                 : bv.localeCompare(av);
         });
+
+    const presentCount = regs.filter((r) => r.attended_at).length;
+    const absentCount = regs.length - presentCount;
 
     // ── Delete ─────────────────────────────────────────────────────────────────
     const handleDelete = async () => {
@@ -410,11 +482,12 @@ export default function AdminPage({ onLogout }) {
 
                 {/* ── Stats ── */}
                 {stats && (
-                    <div className="admin-stats-grid">
+                    <div className="admin-stats-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
                         <StatCard icon={<Users size={22} />} label="Total Registrations" value={stats.totalRegistrations} color="blue" />
                         <StatCard icon={<Ticket size={22} />} label="Total Seats" value={stats.totalSeats} color="green" />
                         <StatCard icon={<BarChart2 size={22} />} label="Booked Seats" value={stats.bookedSeats} color="yellow" />
                         <StatCard icon={<CheckCircle size={22} />} label="Seats Remaining" value={stats.remainingSeats} color={stats.remainingSeats === 0 ? 'red' : 'teal'} />
+                        <StatCard icon={<UserCheck size={22} />} label="Attended" value={attendedCount ?? '—'} color="green" />
                     </div>
                 )}
 
@@ -427,6 +500,16 @@ export default function AdminPage({ onLogout }) {
                     >
                         <Users size={16} /> Registrations
                         <span className="admin-tab-badge">{regs.length}</span>
+                    </button>
+                    <button
+                        className={`admin-tab ${activeTab === 'attendance' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('attendance')}
+                        id="tab-attendance"
+                    >
+                        <ScanLine size={16} /> Take Attendance
+                        {attendedCount !== null && (
+                            <span className="admin-tab-badge" style={{ background: '#34a853' }}>{attendedCount}</span>
+                        )}
                     </button>
                     <button
                         className={`admin-tab ${activeTab === 'event' ? 'active' : ''}`}
@@ -457,6 +540,24 @@ export default function AdminPage({ onLogout }) {
                                         <X size={14} />
                                     </button>
                                 )}
+                            </div>
+                            {/* Attendance filter pills */}
+                            <div className="attend-filter-pills">
+                                <button
+                                    className={`attend-pill ${attendFilter === 'all' ? 'active' : ''}`}
+                                    onClick={() => setAttendFilter('all')}
+                                    id="filter-all"
+                                >All ({regs.length})</button>
+                                <button
+                                    className={`attend-pill attend-pill-present ${attendFilter === 'present' ? 'active' : ''}`}
+                                    onClick={() => setAttendFilter('present')}
+                                    id="filter-present"
+                                >✅ Present ({presentCount})</button>
+                                <button
+                                    className={`attend-pill attend-pill-absent ${attendFilter === 'absent' ? 'active' : ''}`}
+                                    onClick={() => setAttendFilter('absent')}
+                                    id="filter-absent"
+                                >⬜ Absent ({absentCount})</button>
                             </div>
                             <button
                                 className="btn btn-sm"
@@ -503,15 +604,16 @@ export default function AdminPage({ onLogout }) {
                                             <th onClick={() => toggleSort('created_at')} className="sortable">
                                                 Registered At <SortIcon col="created_at" />
                                             </th>
+                                            <th>Attendance</th>
                                             <th className="admin-th-action">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filtered.map((r, i) => (
-                                            <tr key={r.id} className="admin-row">
+                                            <tr key={r.id} className={`admin-row ${r.attended_at ? 'admin-row-present' : ''}`}>
                                                 <td className="admin-td-num">{i + 1}</td>
                                                 <td className="admin-td-name">
-                                                    <div className="admin-avatar">
+                                                    <div className={`admin-avatar ${r.attended_at ? 'admin-avatar-present' : ''}`}>
                                                         {r.name.charAt(0).toUpperCase()}
                                                     </div>
                                                     <span>{r.name}</span>
@@ -520,6 +622,18 @@ export default function AdminPage({ onLogout }) {
                                                 <td>{r.phone}</td>
                                                 <td>{r.course || <span className="admin-td-empty">—</span>}</td>
                                                 <td className="admin-td-date">{formatDate(r.created_at)}</td>
+                                                <td>
+                                                    {r.attended_at ? (
+                                                        <div className="attend-badge attend-badge-present">
+                                                            <span>✅ Present</span>
+                                                            <span className="attend-badge-time">
+                                                                {new Date(r.attended_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="attend-badge attend-badge-absent">⬜ Absent</span>
+                                                    )}
+                                                </td>
                                                 <td>
                                                     <button
                                                         className="btn btn-danger btn-sm admin-delete-btn"
@@ -539,7 +653,119 @@ export default function AdminPage({ onLogout }) {
 
                         <div className="admin-table-footer">
                             Showing <strong>{filtered.length}</strong> of <strong>{regs.length}</strong> registrations
+                            {presentCount > 0 && (
+                                <span style={{ marginLeft: 12, color: '#137333', fontWeight: 600 }}>
+                                    &bull; {presentCount} present
+                                </span>
+                            )}
                         </div>
+                    </div>
+                )}
+
+                {/* ── ATTENDANCE TAB ── */}
+                {activeTab === 'attendance' && (
+                    <div className="admin-card card attendance-panel">
+                        <div className="admin-card-header">
+                            <h2><ScanLine size={18} /> Take Attendance</h2>
+                            <p>Enter the 4-digit ticket code (e.g. <strong>A1B2</strong>) printed on each student's ticket email. The system will mark them present instantly.</p>
+                        </div>
+
+                        {/* Scanner Form */}
+                        <form className="attendance-scanner" onSubmit={handleScan}>
+                            <div className="attendance-input-wrap">
+                                <div className="attendance-input-prefix">EVT-</div>
+                                <input
+                                    ref={ticketInputRef}
+                                    type="text"
+                                    className="attendance-input"
+                                    placeholder="A1B2"
+                                    value={ticketInput}
+                                    onChange={(e) => setTicketInput(e.target.value.toUpperCase().slice(0, 4))}
+                                    maxLength={4}
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                    id="attendance-ticket-input"
+                                    disabled={scanLoading}
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="btn attendance-scan-btn"
+                                disabled={scanLoading || ticketInput.trim().length !== 4}
+                                id="btn-mark-attendance"
+                            >
+                                {scanLoading
+                                    ? <><span className="spinner" /> Checking…</>
+                                    : <><UserCheck size={18} /> Mark Present</>}
+                            </button>
+                        </form>
+
+                        {/* Scan Result */}
+                        {scanResult && (
+                            <div className={`scan-result scan-result-${scanResult.type}`}>
+                                {scanResult.type === 'success' && (
+                                    <>
+                                        <div className="scan-result-icon">✅</div>
+                                        <div className="scan-result-body">
+                                            <div className="scan-result-title">Marked Present!</div>
+                                            <div className="scan-result-name">{scanResult.data?.name}</div>
+                                            <div className="scan-result-meta">
+                                                {scanResult.data?.email} &bull; {scanResult.data?.course || 'N/A'}
+                                            </div>
+                                            <div className="scan-result-code">{scanResult.data?.ticketCode}</div>
+                                        </div>
+                                    </>
+                                )}
+                                {scanResult.type === 'already' && (
+                                    <>
+                                        <div className="scan-result-icon">⚠️</div>
+                                        <div className="scan-result-body">
+                                            <div className="scan-result-title">Already Present!</div>
+                                            <div className="scan-result-name">{scanResult.data?.name}</div>
+                                            <div className="scan-result-meta">
+                                                {scanResult.data?.email} &bull; {scanResult.data?.course || 'N/A'}
+                                            </div>
+                                            <div className="scan-result-code">{scanResult.data?.ticketCode} — duplicate scan</div>
+                                        </div>
+                                    </>
+                                )}
+                                {scanResult.type === 'error' && (
+                                    <>
+                                        <div className="scan-result-icon">❌</div>
+                                        <div className="scan-result-body">
+                                            <div className="scan-result-title">Not Found</div>
+                                            <div className="scan-result-meta">{scanResult.message}</div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Recent scan log */}
+                        {scanLog.length > 0 && (
+                            <div className="scan-log">
+                                <div className="scan-log-header">Recent Scans</div>
+                                {scanLog.map((entry, i) => (
+                                    <div key={i} className={`scan-log-row scan-log-${entry.type}`}>
+                                        <span className="scan-log-icon">
+                                            {entry.type === 'success' ? '✅' : entry.type === 'already' ? '⚠️' : '❌'}
+                                        </span>
+                                        <span className="scan-log-code">EVT-{entry.code}</span>
+                                        <span className="scan-log-name">{entry.name || '—'}</span>
+                                        <span className="scan-log-time">
+                                            {entry.time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {scanLog.length === 0 && (
+                            <div className="attendance-empty">
+                                <ScanLine size={40} style={{ opacity: 0.25 }} />
+                                <p>No scans yet. Enter a ticket code above to begin.</p>
+                            </div>
+                        )}
                     </div>
                 )}
 
