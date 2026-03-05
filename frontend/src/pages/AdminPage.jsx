@@ -359,6 +359,9 @@ export default function AdminPage({ onLogout }) {
 
     const presentCount = regs.filter((r) => r.attended_at).length;
     const absentCount = regs.length - presentCount;
+    // Use the higher of: live presentCount (from loaded regs) OR authoritative DB count from stats API.
+    // This stays correct even when regs is limited by Supabase's row cap before backend redeploy.
+    const displayAttendedCount = Math.max(presentCount, stats?.attendedCount ?? 0);
 
     // ── Pagination ─────────────────────────────────────────────────────────────
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -507,8 +510,8 @@ export default function AdminPage({ onLogout }) {
                         id="tab-attendance"
                     >
                         <ScanLine size={16} /> Take Attendance
-                        {presentCount > 0 && (
-                            <span className="admin-tab-badge" style={{ background: '#34a853' }}>{presentCount}</span>
+                        {displayAttendedCount > 0 && (
+                            <span className="admin-tab-badge" style={{ background: '#34a853' }}>{displayAttendedCount}</span>
                         )}
                     </button>
                     <button
@@ -541,23 +544,23 @@ export default function AdminPage({ onLogout }) {
                                     </button>
                                 )}
                             </div>
-                            {/* Attendance filter pills */}
+                            {/* Attendance filter pills — counts from stats API (authoritative DB) */}
                             <div className="attend-filter-pills">
                                 <button
                                     className={`attend-pill ${attendFilter === 'all' ? 'active' : ''}`}
                                     onClick={() => setAttendFilter('all')}
                                     id="filter-all"
-                                >All ({regs.length})</button>
+                                >All ({stats?.totalRegistrations ?? regs.length})</button>
                                 <button
                                     className={`attend-pill attend-pill-present ${attendFilter === 'present' ? 'active' : ''}`}
                                     onClick={() => setAttendFilter('present')}
                                     id="filter-present"
-                                >✅ Present ({presentCount})</button>
+                                >✅ Present ({displayAttendedCount})</button>
                                 <button
                                     className={`attend-pill attend-pill-absent ${attendFilter === 'absent' ? 'active' : ''}`}
                                     onClick={() => setAttendFilter('absent')}
                                     id="filter-absent"
-                                >⬜ Absent ({absentCount})</button>
+                                >⬜ Absent ({(stats?.totalRegistrations ?? regs.length) - displayAttendedCount})</button>
                             </div>
                             <button
                                 className="btn btn-sm"
@@ -565,7 +568,7 @@ export default function AdminPage({ onLogout }) {
                                 onClick={() => setShowSendTicketsModal(true)}
                                 disabled={regs.length === 0}
                                 id="btn-send-tickets"
-                                title={regs.length === 0 ? 'No registrations to send tickets to' : `Send tickets to ${regs.length} participants`}
+                                title={regs.length === 0 ? 'No registrations to send tickets to' : `Send tickets to ${stats?.totalRegistrations ?? regs.length} participants`}
                             >
                                 <Mail size={14} /> Send All Tickets
                             </button>
@@ -655,9 +658,9 @@ export default function AdminPage({ onLogout }) {
                             <div className="pagination-info">
                                 Showing <strong>{(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong>
                                 {filtered.length !== regs.length && <span> (filtered from {regs.length})</span>}
-                                {presentCount > 0 && (
+                                {displayAttendedCount > 0 && (
                                     <span style={{ marginLeft: 8, color: '#137333', fontWeight: 600 }}>
-                                        &bull; {presentCount} present
+                                        &bull; {displayAttendedCount} present
                                     </span>
                                 )}
                             </div>
