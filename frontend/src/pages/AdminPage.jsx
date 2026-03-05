@@ -258,11 +258,10 @@ export default function AdminPage({ onLogout }) {
 
     // ── Attendance Scanner State ───────────────────────────────────────────────
     const [ticketInput, setTicketInput] = useState('');
-    const [attendFilter, setAttendFilter] = useState('all'); // 'all' | 'present' | 'absent'
+    const [attendFilter, setAttendFilter] = useState('all');
     const [scanLoading, setScanLoading] = useState(false);
-    const [scanResult, setScanResult] = useState(null); // { type: 'success'|'already'|'error', data }
-    const [scanLog, setScanLog] = useState([]); // recent scans
-    const [attendedCount, setAttendedCount] = useState(null);
+    const [scanResult, setScanResult] = useState(null);
+    const [scanLog, setScanLog] = useState([]);
     const ticketInputRef = useRef(null);
 
     const load = useCallback(async () => {
@@ -292,21 +291,6 @@ export default function AdminPage({ onLogout }) {
         }
     }, [activeTab]);
 
-    // ── Fetch attended count ───────────────────────────────────────────────────
-    const loadAttendedCount = useCallback(async () => {
-        try {
-            const { data } = await fetchRegistrations();
-            const count = (data.registrations || []).filter((r) => r.attended_at).length;
-            setAttendedCount(count);
-        } catch {
-            // silently ignore
-        }
-    }, []);
-
-    useEffect(() => {
-        if (activeTab === 'attendance') loadAttendedCount();
-    }, [activeTab, loadAttendedCount]);
-
     // ── Handle ticket scan submission ──────────────────────────────────────────
     const handleScan = async (e) => {
         e.preventDefault();
@@ -321,7 +305,12 @@ export default function AdminPage({ onLogout }) {
             const { data } = await markAttendance(code);
             setScanResult({ type: 'success', data: data.registration, message: data.message });
             setScanLog((prev) => [{ type: 'success', code, name: data.registration.name, time: new Date() }, ...prev.slice(0, 19)]);
-            setAttendedCount((prev) => (prev !== null ? prev + 1 : null));
+            // Update regs in-place so presentCount (and all badges) update instantly
+            setRegs((prev) => prev.map((r) =>
+                r.id.slice(-4).toUpperCase() === code
+                    ? { ...r, attended_at: new Date().toISOString() }
+                    : r
+            ));
         } catch (err) {
             const res = err.response?.data;
             if (res?.alreadyPresent) {
@@ -497,7 +486,7 @@ export default function AdminPage({ onLogout }) {
                         <StatCard icon={<Ticket size={22} />} label="Total Seats" value={stats.totalSeats} color="green" />
                         <StatCard icon={<BarChart2 size={22} />} label="Booked Seats" value={stats.bookedSeats} color="yellow" />
                         <StatCard icon={<CheckCircle size={22} />} label="Seats Remaining" value={stats.remainingSeats} color={stats.remainingSeats === 0 ? 'red' : 'teal'} />
-                        <StatCard icon={<UserCheck size={22} />} label="Attended" value={attendedCount ?? '—'} color="green" />
+                        <StatCard icon={<UserCheck size={22} />} label="Attended" value={presentCount} color="green" />
                     </div>
                 )}
 
@@ -509,7 +498,7 @@ export default function AdminPage({ onLogout }) {
                         id="tab-registrations"
                     >
                         <Users size={16} /> Registrations
-                        <span className="admin-tab-badge">{regs.length}</span>
+                        <span className="admin-tab-badge">{stats.totalRegistrations}</span>
                     </button>
                     <button
                         className={`admin-tab ${activeTab === 'attendance' ? 'active' : ''}`}
@@ -517,8 +506,8 @@ export default function AdminPage({ onLogout }) {
                         id="tab-attendance"
                     >
                         <ScanLine size={16} /> Take Attendance
-                        {attendedCount !== null && (
-                            <span className="admin-tab-badge" style={{ background: '#34a853' }}>{attendedCount}</span>
+                        {presentCount > 0 && (
+                            <span className="admin-tab-badge" style={{ background: '#34a853' }}>{presentCount}</span>
                         )}
                     </button>
                     <button

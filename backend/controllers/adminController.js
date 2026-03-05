@@ -36,7 +36,8 @@ const getRegistrations = async (req, res) => {
     const { data, error } = await supabase
       .from('registrations')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(0, 4999); // Supabase default cap is 1000 — override to allow up to 5000
 
     if (error) throw error;
     return res.json({ success: true, registrations: data });
@@ -189,7 +190,8 @@ const sendTickets = async (req, res) => {
       .from('registrations')
       .select('*')
       .is('ticket_sent_at', null)          // ← DEDUP: skip already-sent
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .range(0, 4999); // bypass Supabase default 1000-row cap
     if (regErr) throw regErr;
 
     // Also get total count for the response summary
@@ -516,7 +518,8 @@ const markAttendance = async (req, res) => {
     // filtering in JS is perfectly fast and safe.
     const { data: allRegs, error: fetchErr } = await supabase
       .from('registrations')
-      .select('id, name, email, phone, course, attended_at');
+      .select('id, name, email, phone, course, attended_at')
+      .range(0, 4999); // bypass Supabase default 1000-row cap
 
     if (fetchErr) throw fetchErr;
 
