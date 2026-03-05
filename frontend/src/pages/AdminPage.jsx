@@ -244,7 +244,9 @@ export default function AdminPage({ onLogout }) {
     const [search, setSearch] = useState('');
     const [sortKey, setSortKey] = useState('created_at');
     const [sortAsc, setSortAsc] = useState(false);
-    const [activeTab, setActiveTab] = useState('registrations'); // 'registrations' | 'event' | 'attendance'
+    const [activeTab, setActiveTab] = useState('registrations');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
 
     const [deleteTarget, setDeleteTarget] = useState(null); // { id, name, email }
     const [deleting, setDeleting] = useState(false);
@@ -368,6 +370,14 @@ export default function AdminPage({ onLogout }) {
 
     const presentCount = regs.filter((r) => r.attended_at).length;
     const absentCount = regs.length - presentCount;
+
+    // ── Pagination ─────────────────────────────────────────────────────────────
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+    // Reset to page 1 whenever search / filter / sort changes
+    useEffect(() => { setPage(1); }, [search, attendFilter, sortKey, sortAsc]);
 
     // ── Delete ─────────────────────────────────────────────────────────────────
     const handleDelete = async () => {
@@ -609,9 +619,9 @@ export default function AdminPage({ onLogout }) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filtered.map((r, i) => (
+                                        {paginated.map((r, i) => (
                                             <tr key={r.id} className={`admin-row ${r.attended_at ? 'admin-row-present' : ''}`}>
-                                                <td className="admin-td-num">{i + 1}</td>
+                                                <td className="admin-td-num">{(safePage - 1) * pageSize + i + 1}</td>
                                                 <td className="admin-td-name">
                                                     <div className={`admin-avatar ${r.attended_at ? 'admin-avatar-present' : ''}`}>
                                                         {r.name.charAt(0).toUpperCase()}
@@ -652,12 +662,79 @@ export default function AdminPage({ onLogout }) {
                         )}
 
                         <div className="admin-table-footer">
-                            Showing <strong>{filtered.length}</strong> of <strong>{regs.length}</strong> registrations
-                            {presentCount > 0 && (
-                                <span style={{ marginLeft: 12, color: '#137333', fontWeight: 600 }}>
-                                    &bull; {presentCount} present
-                                </span>
+                            <div className="pagination-info">
+                                Showing <strong>{(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong>
+                                {filtered.length !== regs.length && <span> (filtered from {regs.length})</span>}
+                                {presentCount > 0 && (
+                                    <span style={{ marginLeft: 8, color: '#137333', fontWeight: 600 }}>
+                                        &bull; {presentCount} present
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Pagination controls */}
+                            {totalPages > 1 && (
+                                <div className="pagination-controls">
+                                    <button
+                                        className="pg-btn"
+                                        onClick={() => setPage(1)}
+                                        disabled={safePage === 1}
+                                        title="First page"
+                                    >&laquo;</button>
+                                    <button
+                                        className="pg-btn"
+                                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                        disabled={safePage === 1}
+                                    >&lsaquo; Prev</button>
+
+                                    {/* Page number pills */}
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                        .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
+                                        .reduce((acc, p, idx, arr) => {
+                                            if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+                                            acc.push(p);
+                                            return acc;
+                                        }, [])
+                                        .map((p, idx) =>
+                                            p === '...' ? (
+                                                <span key={`ellipsis-${idx}`} className="pg-ellipsis">&hellip;</span>
+                                            ) : (
+                                                <button
+                                                    key={p}
+                                                    className={`pg-btn pg-num ${safePage === p ? 'active' : ''}`}
+                                                    onClick={() => setPage(p)}
+                                                >{p}</button>
+                                            )
+                                        )
+                                    }
+
+                                    <button
+                                        className="pg-btn"
+                                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                        disabled={safePage === totalPages}
+                                    >Next &rsaquo;</button>
+                                    <button
+                                        className="pg-btn"
+                                        onClick={() => setPage(totalPages)}
+                                        disabled={safePage === totalPages}
+                                        title="Last page"
+                                    >&raquo;</button>
+                                </div>
                             )}
+
+                            {/* Per-page selector */}
+                            <div className="pagination-size">
+                                <label htmlFor="page-size-select">Rows:</label>
+                                <select
+                                    id="page-size-select"
+                                    value={pageSize}
+                                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                                >
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -403,14 +403,120 @@
     border-radius: var(--r-md);
 }
 
-/* ── Table Footer ────────────────────────────────────────────── */
+
+/* ── Table Footer + Pagination ───────────────────────────────── */
 .admin-table-footer {
-    padding: 12px 20px;
+    padding: 10px 20px;
     font-size: 13px;
     color: var(--text-secondary);
     border-top: 1px solid var(--border);
     background: var(--bg);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
+
+.pagination-info {
+    flex: 1;
+    min-width: 180px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.pg-btn {
+    min-width: 34px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--white);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.pg-btn:hover:not(:disabled) {
+    border-color: var(--blue);
+    color: var(--blue);
+    background: var(--blue-light);
+}
+
+.pg-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+.pg-btn.pg-num.active {
+    background: var(--blue);
+    color: white;
+    border-color: var(--blue);
+    font-weight: 700;
+}
+
+.pg-ellipsis {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    user-select: none;
+}
+
+.pagination-size {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.pagination-size select {
+    height: 32px;
+    padding: 0 8px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--white);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    outline: none;
+    transition: border-color var(--transition);
+}
+
+.pagination-size select:focus {
+    border-color: var(--blue);
+}
+
+@media (max-width: 768px) {
+    .admin-table-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .pagination-controls {
+        flex-wrap: wrap;
+    }
+}
+
+
 
 /* ── Empty State ─────────────────────────────────────────────── */
 .admin-empty {
