@@ -95,6 +95,20 @@ SET booked_seats = (
 END;
 $$;
 -- ────────────────────────────────────────────────────────────
+-- Function: find_by_ticket_code
+-- Used by admin attendance scanner.
+-- Ticket code = last 4 chars of the registration UUID (uppercase).
+-- e.g. UUID "...a1b2c3d4" → ticket code "C3D4"
+-- Doing this at DB level avoids fetching all rows and has no row-limit issues.
+-- ────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION find_by_ticket_code(ticket text)
+RETURNS SETOF registrations
+LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT * FROM registrations
+  WHERE UPPER(RIGHT(id::text, 4)) = UPPER(ticket)
+  LIMIT 1;
+$$;
+-- ────────────────────────────────────────────────────────────
 -- Row Level Security (RLS)
 -- ────────────────────────────────────────────────────────────
 ALTER TABLE event ENABLE ROW LEVEL SECURITY;

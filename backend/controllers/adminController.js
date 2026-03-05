@@ -516,23 +516,19 @@ const markAttendance = async (req, res) => {
       return res.status(400).json({ error: 'Ticket code must be exactly 4 alphanumeric characters.' });
     }
 
-    // ── 1. Fetch ALL registrations and match in JS ──────────────────────────
-    // NOTE: We CANNOT use .ilike() on a UUID column — Postgres UUID type does
-    // not support the ~~ (LIKE) operator, which causes the error:
-    //   "operator does not exist: uuid ~~* unknown"
-    // Since registrations are bounded (~few hundred max), fetching all and
-    // filtering in JS is perfectly fast and safe.
-    const { data: allRegs, error: fetchErr } = await supabase
-      .from('registrations')
-      .select('id, name, email, phone, course, attended_at')
-      .range(0, 4999); // bypass Supabase default 1000-row cap
+    // ── 1. Find registration by ticket code using DB-level lookup ───────────
+    // Uses the find_by_ticket_code() SQL function in Supabase which does:
+    //   SELECT * FROM registrations WHERE UPPER(RIGHT(id::text, 4)) = UPPER(ticket) LIMIT 1
+    // This avoids fetching all rows and has no row-limit issues.
+    const { data: rpcData, error: fetchErr } = await supabase
+      .rpc('find_by_ticket_code', { ticket: code });
 
-    if (fetchErr) throw fetchErr;
+    if (fetchErr) {
+      console.error('find_by_ticket_code RPC error:', fetchErr.message);
+      return res.status(500).json({ error: 'Lookup failed. Please try again.' });
+    }
 
-    // Match by last 4 chars of the UUID string (e.g. "...abcd" → "ABCD")
-    const reg = (allRegs || []).find(
-      (r) => r.id.slice(-4).toUpperCase() === code
-    );
+    const reg = rpcData?.[0] ?? null;
 
     if (!reg) {
       return res.status(404).json({
