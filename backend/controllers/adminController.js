@@ -4,16 +4,21 @@ const transporter = require('../config/mailer');
 // ── GET /admin/stats ────────────────────────────────────────────────────────
 const getStats = async (req, res) => {
   try {
-    const { data: event, error: eventErr } = await supabase
-      .from('event')
-      .select('*')
-      .maybeSingle();
-    if (eventErr) throw eventErr;
+    // Run all 3 queries in parallel for speed
+    const [
+      { data: event, error: eventErr },
+      { count: totalCount, error: countErr },
+      { count: attendedCount, error: attendedErr },
+    ] = await Promise.all([
+      supabase.from('event').select('*').maybeSingle(),
+      supabase.from('registrations').select('*', { count: 'exact', head: true }),
+      supabase.from('registrations').select('*', { count: 'exact', head: true }).not('attended_at', 'is', null),
+    ]);
 
-    const { count, error: countErr } = await supabase
-      .from('registrations')
-      .select('*', { count: 'exact', head: true });
+    if (eventErr) throw eventErr;
     if (countErr) throw countErr;
+    // attendedErr is non-fatal — attended_at column might not exist on some envs
+    if (attendedErr) console.warn('attended_at count query failed (column may be missing):', attendedErr.message);
 
     return res.json({
       success: true,
@@ -21,7 +26,8 @@ const getStats = async (req, res) => {
         totalSeats: event?.total_seats ?? 0,
         bookedSeats: event?.booked_seats ?? 0,
         remainingSeats: (event?.total_seats ?? 0) - (event?.booked_seats ?? 0),
-        totalRegistrations: count ?? 0,
+        totalRegistrations: totalCount ?? 0,
+        attendedCount: attendedErr ? 0 : (attendedCount ?? 0),
       },
     });
   } catch (err) {

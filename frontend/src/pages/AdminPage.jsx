@@ -486,7 +486,8 @@ export default function AdminPage({ onLogout }) {
                         <StatCard icon={<Ticket size={22} />} label="Total Seats" value={stats.totalSeats} color="green" />
                         <StatCard icon={<BarChart2 size={22} />} label="Booked Seats" value={stats.bookedSeats} color="yellow" />
                         <StatCard icon={<CheckCircle size={22} />} label="Seats Remaining" value={stats.remainingSeats} color={stats.remainingSeats === 0 ? 'red' : 'teal'} />
-                        <StatCard icon={<UserCheck size={22} />} label="Attended" value={presentCount} color="green" />
+                        {/* Use max of: live presentCount (updated on scan) vs DB attendedCount (loaded on mount) */}
+                        <StatCard icon={<UserCheck size={22} />} label="Attended" value={Math.max(presentCount, stats.attendedCount ?? 0)} color="green" />
                     </div>
                 )}
 
