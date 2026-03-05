@@ -516,19 +516,33 @@ const markAttendance = async (req, res) => {
       return res.status(400).json({ error: 'Ticket code must be exactly 4 alphanumeric characters.' });
     }
 
-    // ── 1. Find registration by ticket code using DB-level lookup ───────────
-    // Uses the find_by_ticket_code() SQL function in Supabase which does:
-    //   SELECT * FROM registrations WHERE UPPER(RIGHT(id::text, 4)) = UPPER(ticket) LIMIT 1
-    // This avoids fetching all rows and has no row-limit issues.
-    const { data: rpcData, error: fetchErr } = await supabase
+    // ── 1. Find registration by ticket code ────────────────────────────────
+    // Strategy: try the fast DB-level RPC first.
+    // If the SQL function doesn't exist yet in Supabase, fall back to
+    // fetching all registrations and filtering by last 4 UUID chars in JS.
+    let reg = null;
+
+    const { data: rpcData, error: rpcErr } = await supabase
       .rpc('find_by_ticket_code', { ticket: code });
 
-    if (fetchErr) {
-      console.error('find_by_ticket_code RPC error:', fetchErr.message);
-      return res.status(500).json({ error: 'Lookup failed. Please try again.' });
-    }
+    if (!rpcErr) {
+      // ✅ RPC succeeded — use its result
+      reg = rpcData?.[0] ?? null;
+    } else {
+      // ⚠️ RPC not available yet — fallback: fetch all & filter in JS
+      console.warn('find_by_ticket_code RPC unavailable, using fallback:', rpcErr.message);
+      const { data: allRegs, error: fetchErr } = await supabase
+        .from('registrations')
+        .select('id, name, email, phone, course, attended_at')
+        .range(0, 4999);
 
-    const reg = rpcData?.[0] ?? null;
+      if (fetchErr) throw fetchErr;
+
+      // Match last 4 chars of UUID (case-insensitive)
+      reg = (allRegs || []).find(
+        (r) => r.id.replace(/-/g, '').slice(-4).toUpperCase() === code
+      ) ?? null;
+    }
 
     if (!reg) {
       return res.status(404).json({
