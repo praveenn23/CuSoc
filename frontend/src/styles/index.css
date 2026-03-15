@@ -411,7 +411,7 @@ select {
 /* ── GDG Color Strip ────────────────────────────────────────── */
 .gdg-strip {
   height: 4px;
-  background: linear-gradient(90deg, #ea4335 25%, #fbbc04 25% 50%, #34a853 50% 75%, #1a73e8 75%);
+  background: linear-gradient(90deg, #ea4335 50%, #ffffff 50%);
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────── */

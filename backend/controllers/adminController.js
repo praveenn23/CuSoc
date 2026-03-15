@@ -123,7 +123,8 @@ const getEvent = async (req, res) => {
 // ── PUT /admin/event ─────────────────────────────────────────────────────────
 const updateEvent = async (req, res) => {
   try {
-    const { title, description, date, time, venue, total_seats } = req.body;
+    const { title, description, date, time, venue, total_seats,
+      about_text, event_sections, speakers, partners } = req.body;
 
     if (!title || !date || !venue || !total_seats) {
       return res.status(400).json({ error: 'title, date, venue, and total_seats are required' });
@@ -131,6 +132,17 @@ const updateEvent = async (req, res) => {
 
     if (isNaN(parseInt(total_seats)) || parseInt(total_seats) < 1) {
       return res.status(400).json({ error: 'total_seats must be a positive number' });
+    }
+
+    // ── Validate array fields ──────────────────────────────────────────────
+    if (event_sections !== undefined && !Array.isArray(event_sections)) {
+      return res.status(400).json({ error: 'event_sections must be an array' });
+    }
+    if (speakers !== undefined && !Array.isArray(speakers)) {
+      return res.status(400).json({ error: 'speakers must be an array' });
+    }
+    if (partners !== undefined && !Array.isArray(partners)) {
+      return res.status(400).json({ error: 'partners must be an array' });
     }
 
     const { data: existing, error: fetchErr } = await supabase
@@ -148,16 +160,24 @@ const updateEvent = async (req, res) => {
       });
     }
 
+    // Build update payload — only include optional fields if sent by the client
+    const updatePayload = {
+      title: title.trim(),
+      description: description?.trim() || null,
+      date,
+      time: time?.trim() || null,
+      venue: venue.trim(),
+      total_seats: newTotalSeats,
+    };
+
+    if (about_text !== undefined) updatePayload.about_text = about_text?.trim() || null;
+    if (event_sections !== undefined) updatePayload.event_sections = event_sections;
+    if (speakers !== undefined) updatePayload.speakers = speakers;
+    if (partners !== undefined) updatePayload.partners = partners;
+
     const { data: updated, error: updateErr } = await supabase
       .from('event')
-      .update({
-        title: title.trim(),
-        description: description?.trim() || null,
-        date,
-        time: time?.trim() || null,
-        venue: venue.trim(),
-        total_seats: newTotalSeats,
-      })
+      .update(updatePayload)
       .eq('id', existing.id)
       .select()
       .single();

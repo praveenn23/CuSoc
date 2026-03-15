@@ -111,7 +111,7 @@
 
 .event-features-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(var(--fcols, 3), 1fr);
     gap: 32px;
     margin-top: 80px;
     align-items: start;

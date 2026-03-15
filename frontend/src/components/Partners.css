@@ -48,6 +48,14 @@
     object-fit: contain;
 }
 
+.partner-name-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-align: center;
+    letter-spacing: 0.3px;
+}
+
 @media (max-width: 768px) {
     .partners-ticker {
         margin-top: 32px;

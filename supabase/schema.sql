@@ -24,8 +24,23 @@ CREATE TABLE IF NOT EXISTS event (
   venue TEXT NOT NULL,
   total_seats INTEGER NOT NULL DEFAULT 100 CHECK (total_seats > 0),
   booked_seats INTEGER NOT NULL DEFAULT 0 CHECK (booked_seats >= 0),
+  -- ── Dynamic content sections ──────────────────────────────────────
+  -- about_text: intro paragraph shown in "About the Event" card
+  about_text TEXT,
+  -- event_sections: array of { title, items[] } — powers the 3-column grid
+  -- e.g. What You'll Learn, Who Should Attend, GSoC Insights, Key Outcomes
+  event_sections JSONB DEFAULT '[]'::jsonb,
+  -- speakers: array of { name, role, bio, linkedin, color, initials }
+  speakers JSONB DEFAULT '[]'::jsonb,
+  -- partners: array of { name, logo_url }
+  partners JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- Add columns if table already exists (safe for re-runs)
+ALTER TABLE event ADD COLUMN IF NOT EXISTS about_text TEXT;
+ALTER TABLE event ADD COLUMN IF NOT EXISTS event_sections JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE event ADD COLUMN IF NOT EXISTS speakers JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE event ADD COLUMN IF NOT EXISTS partners JSONB DEFAULT '[]'::jsonb;
 -- Unique index on singleton: only 1 row with singleton=TRUE can ever exist
 CREATE UNIQUE INDEX IF NOT EXISTS event_singleton_idx ON event (singleton);
 -- ────────────────────────────────────────────────────────────
@@ -145,7 +160,11 @@ INSERT INTO event (
     time,
     venue,
     total_seats,
-    booked_seats
+    booked_seats,
+    about_text,
+    event_sections,
+    speakers,
+    partners
   )
 VALUES (
     TRUE,
@@ -181,7 +200,24 @@ Spaces are strictly limited to ensure personalized mentoring and effective hands
     '09:30 AM – 04:30 PM IST',
     'D1-Auditorium, Chandigarh University, Mohali, Punjab',
     300,
-    0
+    0,
+    'Join us for an intensive, hands-on workshop focused on contributing to real-world applications through open-source development. This event is specially designed to bridge the gap between theoretical knowledge and practical implementation.',
+    '[
+      {"title":"What You''ll Learn","column":2,"items":["Understand the fundamentals of open-source ecosystems","Learn how to find and evaluate beginner-friendly repositories","Get hands-on experience with Git, GitHub workflows, and pull requests","Understand issues, commits, branching strategies, and code reviews","Contribute to live projects under expert mentorship","Collaborate with like-minded developers in a structured environment","Learn how to build a strong GitHub profile for internships & global programs"]},
+      {"title":"Who Should Attend?","column":1,"items":["1st, 2nd, 3rd year B.Tech / B.E students","Developers interested in open-source","Anyone aiming for GSoC 2026","Students who want real-world coding exposure"]},
+      {"title":"GSoC 2026 Insights","column":3,"items":["Google Summer of Code is a prestigious global program by Google.","Indian students receive approximate stipends of $3,000 – $6,000 USD (based on project size).","Selected contributors receive an official GSoC certificate from Google.","Experience equivalent to a high-quality international internship.","Networking with international mentors and global recognition."]},
+      {"title":"Key Outcomes","column":3,"items":["A clear understanding of open-source contribution processes","Practical experience working on production-level code","Improved collaboration and version control skills","A stronger developer profile with real contributions","A roadmap for preparing for GSoC 2026"]}
+    ]'::jsonb,
+    '[
+      {"id":1,"name":"Praveen Kumar","role":"CEO, Google","bio":"Expert in designing and developing AI system in production with a strong experience in Data Engineering.","linkedin":"https://www.linkedin.com/in/","color":"#1a73e8","initials":"pk"},
+      {"id":2,"name":"Harshit","role":"AI Engineer, ZS Associate","bio":"A multi-year GSoC contributor and AI engineer specializing in large-scale agentic systems.","linkedin":"https://www.linkedin.com/in/","color":"#34a853","initials":"pk"},
+      {"id":3,"name":"Shivansh","role":"SDE, Cognizant","bio":"A skilled Android engineer and GSoC alumnus with strong expertise in building high-performance.","linkedin":"https://www.linkedin.com/in/","color":"#ea4335","initials":"pk"},
+      {"id":4,"name":"Hassan","role":"SDE, Cognizant","bio":"A highly accomplished AI and Open-Source engineer with GSoC and Summer of Bitcoin expertise.","linkedin":"https://www.linkedin.com/in/","color":"#fbbc04","initials":"pk"}
+    ]'::jsonb,
+    '[
+      {"id":1,"name":"CAC","logo_url":""},
+      {"id":2,"name":"CU Play Nation","logo_url":""}
+    ]'::jsonb
   ) ON CONFLICT (singleton) DO
 UPDATE
 SET title = EXCLUDED.title,
@@ -190,6 +226,8 @@ SET title = EXCLUDED.title,
   time = EXCLUDED.time,
   venue = EXCLUDED.venue,
   total_seats = EXCLUDED.total_seats;
+-- NOTE: about_text, event_sections, speakers, partners are intentionally NOT
+--       synced in the seed upsert so admin edits are preserved on re-run.
 -- NOTE: booked_seats is intentionally NOT updated here
 --       so existing registrations count is preserved.
 -- ────────────────────────────────────────────────────────────

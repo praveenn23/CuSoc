@@ -1,24 +1,32 @@
 import gdgLogo from '../assets/partners/GDG.png';
-import eventCrewLogo from '../assets/partners/EvenmtCrew.png';
 import cSquareLogo from '../assets/partners/C_Square_Black_1-removebg-preview.png';
 import './Partners.css';
 
-// Community partner logos
-const PARTNERS = [
+// ── Static fallback partner data ─────────────────────────────────────────────
+const STATIC_PARTNERS = [
     { id: 1, name: 'GDG', logo: gdgLogo },
-    // { id: 2, name: 'Event Crew', logo: eventCrewLogo },
     { id: 3, name: 'C Square', logo: cSquareLogo },
 ];
 
-export default function Partners() {
-    // Duplicate for infinite scroll effect (increased for fewer items to ensure smooth loop)
-    const tickerItems = [...PARTNERS, ...PARTNERS, ...PARTNERS, ...PARTNERS, ...PARTNERS, ...PARTNERS];
+export default function Partners({ partners }) {
+    // Build display list: prefer dynamic DB data, but keep local logos where logo_url is empty
+    const LOCAL_LOGO_MAP = { GDG: gdgLogo, 'C Square': cSquareLogo };
+
+    const data = Array.isArray(partners) && partners.length > 0
+        ? partners.map((p) => ({
+            ...p,
+            // If admin left logo_url blank, try to match a local logo by name
+            logo: p.logo_url || LOCAL_LOGO_MAP[p.name] || null,
+        }))
+        : STATIC_PARTNERS;
+
+    // Duplicate for infinite ticker scroll
+    const tickerItems = [...data, ...data, ...data, ...data, ...data, ...data];
 
     return (
         <section className="partners-section section">
             <div className="container">
                 <div className="section-header reveal">
-                    {/* <div className="chip chip-blue" style={{ marginBottom: 12 }}>🤝 Networking</div> */}
                     <h2 className="section-title">Community Partners</h2>
                     <p className="section-subtitle">
                         Supported by leading tech organizations and innovation hubs
@@ -31,7 +39,10 @@ export default function Partners() {
                     {tickerItems.map((partner, idx) => (
                         <div className="ticker-item" key={`${partner.id}-${idx}`}>
                             <div className="partner-logo-box">
-                                <img src={partner.logo} alt={partner.name} title={partner.name} />
+                                {partner.logo
+                                    ? <img src={partner.logo} alt={partner.name} title={partner.name} />
+                                    : <span className="partner-name-text">{partner.name}</span>
+                                }
                             </div>
                         </div>
                     ))}

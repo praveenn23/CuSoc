@@ -3,7 +3,7 @@ import {
     Users, Ticket, BarChart2, LogOut, Trash2, RefreshCw,
     Search, Edit3, Save, X, ChevronDown, ChevronUp, AlertTriangle,
     CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash, Mail,
-    ScanLine, UserCheck,
+    ScanLine, UserCheck, UserPlus, Building2, Link, Palette,
 } from 'lucide-react';
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
@@ -88,21 +88,70 @@ function SendTicketsModal({ totalCount, onConfirm, onCancel, loading }) {
     );
 }
 
+// ── Blank speaker / partner / section templates ──────────────────────────────
+const BLANK_SPEAKER = { id: Date.now(), name: '', role: '', bio: '', linkedin: '', color: '#1a73e8', initials: '' };
+const BLANK_PARTNER = { id: Date.now(), name: '', logo_url: '' };
+const BLANK_SECTION = { id: Date.now(), title: '', column: 1, type: 'bullets', items: [''], text: '' };
+
 // ── Event Editor ──────────────────────────────────────────────────────────────
 function EventEditor({ event, onSaved }) {
     const [form, setForm] = useState({ ...event });
+    const [aboutText, setAboutText] = useState(event.about_text || '');
+    const [sections, setSections] = useState(Array.isArray(event.event_sections) ? event.event_sections : []);
+    const [speakers, setSpeakers] = useState(Array.isArray(event.speakers) ? event.speakers : []);
+    const [partners, setPartners] = useState(Array.isArray(event.partners) ? event.partners : []);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
 
     // Keep form in sync when event prop changes
-    useEffect(() => { setForm({ ...event }); }, [event]);
+    useEffect(() => {
+        setForm({ ...event });
+        setAboutText(event.about_text || '');
+        setSections(Array.isArray(event.event_sections) ? event.event_sections : []);
+        setSpeakers(Array.isArray(event.speakers) ? event.speakers : []);
+        setPartners(Array.isArray(event.partners) ? event.partners : []);
+    }, [event]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setForm((prev) => ({ ...prev, [name]: value }));
         setError(''); setSuccess('');
     };
+
+    // ── Content Section helpers ───────────────────────────────────────────────
+    const addSection = () => setSections((prev) => [...prev, { ...BLANK_SECTION, id: Date.now() }]);
+    const removeSection = (sIdx) => setSections((prev) => prev.filter((_, i) => i !== sIdx));
+    const updateSectionTitle = (sIdx, val) =>
+        setSections((prev) => prev.map((s, i) => i === sIdx ? { ...s, title: val } : s));
+    const updateSectionColumn = (sIdx, val) =>
+        setSections((prev) => prev.map((s, i) => i === sIdx ? { ...s, column: Number(val) } : s));
+    // Switch content type; preserve existing data in the other field
+    const updateSectionType = (sIdx, val) =>
+        setSections((prev) => prev.map((s, i) =>
+            i === sIdx ? { ...s, type: val, items: s.items?.length ? s.items : [''], text: s.text ?? '' } : s));
+    const updateSectionText = (sIdx, val) =>
+        setSections((prev) => prev.map((s, i) => i === sIdx ? { ...s, text: val } : s));
+    const addItem = (sIdx) =>
+        setSections((prev) => prev.map((s, i) => i === sIdx ? { ...s, items: [...s.items, ''] } : s));
+    const removeItem = (sIdx, iIdx) =>
+        setSections((prev) => prev.map((s, i) => i === sIdx
+            ? { ...s, items: s.items.filter((_, j) => j !== iIdx) } : s));
+    const updateItem = (sIdx, iIdx, val) =>
+        setSections((prev) => prev.map((s, i) => i === sIdx
+            ? { ...s, items: s.items.map((it, j) => j === iIdx ? val : it) } : s));
+
+    // ── Speaker helpers ────────────────────────────────────────────────────────
+    const addSpeaker = () => setSpeakers((prev) => [...prev, { ...BLANK_SPEAKER, id: Date.now() }]);
+    const removeSpeaker = (idx) => setSpeakers((prev) => prev.filter((_, i) => i !== idx));
+    const updateSpeaker = (idx, field, value) =>
+        setSpeakers((prev) => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
+
+    // ── Partner helpers ────────────────────────────────────────────────────────
+    const addPartner = () => setPartners((prev) => [...prev, { ...BLANK_PARTNER, id: Date.now() }]);
+    const removePartner = (idx) => setPartners((prev) => prev.filter((_, i) => i !== idx));
+    const updatePartner = (idx, field, value) =>
+        setPartners((prev) => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -124,6 +173,10 @@ function EventEditor({ event, onSaved }) {
                 time: form.time,
                 venue: form.venue,
                 total_seats: parseInt(form.total_seats),
+                about_text: aboutText,
+                event_sections: sections,
+                speakers,
+                partners,
             });
             setSuccess('Event updated successfully!');
             onSaved(data.event);
@@ -155,6 +208,8 @@ function EventEditor({ event, onSaved }) {
                 </div>
             )}
 
+            {/* ── Core Event Fields ── */}
+            <div className="event-editor-section-label">📋 Core Event Details</div>
             <div className="event-editor-grid">
                 {/* Title */}
                 <div className="form-group event-editor-full">
@@ -164,17 +219,6 @@ function EventEditor({ event, onSaved }) {
                     <input id="ev-title" name="title" type="text"
                         className="form-input" value={form.title || ''} onChange={handleChange}
                         placeholder="Event title" />
-                </div>
-
-                {/* Description */}
-                <div className="form-group event-editor-full">
-                    <label className="form-label" htmlFor="ev-desc">
-                        <AlignLeft size={14} /> Description
-                    </label>
-                    <textarea id="ev-desc" name="description"
-                        className="form-input event-editor-textarea"
-                        value={form.description || ''} onChange={handleChange}
-                        placeholder="Event description" rows={4} />
                 </div>
 
                 {/* Date */}
@@ -226,8 +270,281 @@ function EventEditor({ event, onSaved }) {
                 </div>
             </div>
 
-            <button type="submit" className="btn btn-primary" disabled={saving} id="btn-save-event">
-                {saving ? <><span className="spinner" /> Saving…</> : <><Save size={16} /> Save Changes</>}
+            {/* ── About the Event ── */}
+            <div className="event-editor-section">
+                <div className="event-editor-section-label">📝 About the Event</div>
+                <div className="form-group" style={{ marginTop: 8 }}>
+                    <label className="form-label" htmlFor="ev-about">
+                        Intro paragraph shown in the "About the Event" card on the public page
+                    </label>
+                    <textarea
+                        id="ev-about"
+                        className="form-input event-editor-textarea"
+                        value={aboutText}
+                        onChange={(e) => { setAboutText(e.target.value); setError(''); setSuccess(''); }}
+                        placeholder="Write a compelling introduction to the event..."
+                        rows={5}
+                    />
+                </div>
+            </div>
+
+            {/* ── Content Sections (What You'll Learn, Who Should Attend, etc.) ── */}
+            <div className="event-editor-section">
+                <div className="event-editor-section-header">
+                    <div className="event-editor-section-label">📊 Content Sections ({sections.length})</div>
+                    <button type="button" className="btn btn-sm btn-secondary" onClick={addSection} id="btn-add-section">
+                        <AlignLeft size={14} /> Add Section
+                    </button>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>
+                    These appear in the 3-column grid: e.g. "What You'll Learn", "Who Should Attend?", "GSoC Insights", "Key Outcomes"
+                </p>
+                {sections.length === 0 && (
+                    <div className="event-editor-empty">No content sections yet. Click "Add Section" to create one.</div>
+                )}
+                <div className="event-section-cards">
+                    {sections.map((sec, sIdx) => (
+                        <div key={sec.id ?? sIdx} className="event-section-card">
+                            <div className="event-section-card-header">
+                                <span className="event-section-card-title">{sec.title || `Section ${sIdx + 1}`}</span>
+                                <button type="button" className="btn btn-danger btn-sm"
+                                    onClick={() => removeSection(sIdx)}
+                                    id={`btn-remove-section-${sIdx}`} title="Remove section">
+                                    <Trash2 size={13} />
+                                </button>
+                            </div>
+                            {/* Section Title + Column picker */}
+                            <div className="event-editor-grid" style={{ marginTop: 10 }}>
+                                <div className="form-group">
+                                    <label className="form-label">Section Title</label>
+                                    <input className="form-input" value={sec.title}
+                                        placeholder="e.g. What You'll Learn"
+                                        onChange={(e) => updateSectionTitle(sIdx, e.target.value)} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Display Column</label>
+                                    <select className="form-input"
+                                        value={sec.column ?? ''}
+                                        onChange={(e) => updateSectionColumn(sIdx, e.target.value)}
+                                        id={`sec-col-${sIdx}`}>
+                                        <option value="">Auto (balanced)</option>
+                                        <option value="1">Column 1 (left)</option>
+                                        <option value="2">Column 2 (middle)</option>
+                                        <option value="3">Column 3 (right)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            {/* ── Content type toggle + editor ── */}
+                            <div className="form-group" style={{ marginTop: 10 }}>
+                                <label className="form-label">Content Type</label>
+                                <div className="section-type-toggle">
+                                    <button
+                                        type="button"
+                                        className={`section-type-btn${(sec.type ?? 'bullets') === 'bullets' ? ' active' : ''}`}
+                                        onClick={() => updateSectionType(sIdx, 'bullets')}
+                                        id={`sec-type-bullets-${sIdx}`}>
+                                        ✅ Bullet Points
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`section-type-btn${(sec.type ?? 'bullets') === 'paragraph' ? ' active' : ''}`}
+                                        onClick={() => updateSectionType(sIdx, 'paragraph')}
+                                        id={`sec-type-para-${sIdx}`}>
+                                        📝 Paragraph
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* ── Bullets editor ── */}
+                            {(sec.type ?? 'bullets') === 'bullets' && (
+                                <div className="form-group" style={{ marginTop: 6 }}>
+                                    <label className="form-label">Bullet Points</label>
+                                    <div className="section-items-list">
+                                        {(sec.items ?? ['']).map((item, iIdx) => (
+                                            <div key={iIdx} className="section-item-row">
+                                                <span className="section-item-bullet">•</span>
+                                                <input
+                                                    className="form-input section-item-input"
+                                                    value={item}
+                                                    placeholder={`Point ${iIdx + 1}`}
+                                                    onChange={(e) => updateItem(sIdx, iIdx, e.target.value)}
+                                                />
+                                                <button type="button"
+                                                    className="btn btn-danger btn-sm section-item-remove"
+                                                    onClick={() => removeItem(sIdx, iIdx)}
+                                                    title="Remove bullet"
+                                                    disabled={(sec.items ?? ['']).length <= 1}>
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button type="button"
+                                        className="btn btn-sm btn-secondary"
+                                        onClick={() => addItem(sIdx)}
+                                        id={`btn-add-item-${sIdx}`}
+                                        style={{ marginTop: 8 }}>
+                                        + Add Point
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* ── Paragraph editor ── */}
+                            {(sec.type ?? 'bullets') === 'paragraph' && (
+                                <div className="form-group" style={{ marginTop: 6 }}>
+                                    <label className="form-label">Paragraph Text</label>
+                                    <textarea
+                                        className="form-input event-editor-textarea"
+                                        value={sec.text ?? ''}
+                                        rows={5}
+                                        placeholder="Write the section content here..."
+                                        onChange={(e) => updateSectionText(sIdx, e.target.value)}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* ── Speakers Section ── */}
+            <div className="event-editor-section">
+                <div className="event-editor-section-header">
+                    <div className="event-editor-section-label">🎤 Speakers ({speakers.length})</div>
+                    <button type="button" className="btn btn-sm btn-secondary" onClick={addSpeaker} id="btn-add-speaker">
+                        <UserPlus size={14} /> Add Speaker
+                    </button>
+                </div>
+                {speakers.length === 0 && (
+                    <div className="event-editor-empty">No speakers added yet. Click "Add Speaker" to get started.</div>
+                )}
+                <div className="event-section-cards">
+                    {speakers.map((sp, idx) => (
+                        <div key={sp.id ?? idx} className="event-section-card">
+                            <div className="event-section-card-header">
+                                {/* Avatar preview: photo > initials */}
+                                <div className="speaker-initials-preview" style={{ background: sp.color || '#1a73e8', overflow: 'hidden', padding: 0 }}>
+                                    {sp.photo_url
+                                        ? <img src={sp.photo_url} alt={sp.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            onError={(e) => { e.target.style.display = 'none'; }} />
+                                        : (sp.initials || sp.name?.charAt(0)?.toUpperCase() || '?')
+                                    }
+                                </div>
+                                <span className="event-section-card-title">{sp.name || `Speaker ${idx + 1}`}</span>
+                                <button type="button" className="btn btn-danger btn-sm" onClick={() => removeSpeaker(idx)}
+                                    id={`btn-remove-speaker-${idx}`} title="Remove speaker">
+                                    <Trash2 size={13} />
+                                </button>
+                            </div>
+                            <div className="event-editor-grid" style={{ marginTop: 12 }}>
+                                <div className="form-group">
+                                    <label className="form-label">Full Name *</label>
+                                    <input className="form-input" value={sp.name} placeholder="e.g. Prathamesh Ghatole"
+                                        onChange={(e) => updateSpeaker(idx, 'name', e.target.value)} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Initials (avatar fallback)</label>
+                                    <input className="form-input" value={sp.initials} placeholder="e.g. PG" maxLength={3}
+                                        onChange={(e) => updateSpeaker(idx, 'initials', e.target.value.toUpperCase())} />
+                                </div>
+                                <div className="form-group event-editor-full">
+                                    <label className="form-label">Role / Title</label>
+                                    <input className="form-input" value={sp.role} placeholder="e.g. SDE - AI, Gekko"
+                                        onChange={(e) => updateSpeaker(idx, 'role', e.target.value)} />
+                                </div>
+                                <div className="form-group event-editor-full">
+                                    <label className="form-label">Bio</label>
+                                    <textarea className="form-input" value={sp.bio} rows={2}
+                                        placeholder="Short biography..."
+                                        onChange={(e) => updateSpeaker(idx, 'bio', e.target.value)} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label"><Link size={13} /> LinkedIn URL</label>
+                                    <input className="form-input" value={sp.linkedin || ''} placeholder="https://linkedin.com/in/..."
+                                        onChange={(e) => updateSpeaker(idx, 'linkedin', e.target.value)} />
+                                </div>
+                                {/* ── Photo URL + live preview ── */}
+                                <div className="form-group event-editor-full">
+                                    <label className="form-label"><Link size={13} /> Photo URL <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(replaces initials on public page)</span></label>
+                                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                        <div className="speaker-photo-preview" style={{ background: sp.color || '#1a73e8' }}>
+                                            {sp.photo_url
+                                                ? <img src={sp.photo_url} alt="preview"
+                                                    onError={(e) => { e.target.style.display = 'none'; }} />
+                                                : <span>{sp.initials || sp.name?.charAt(0)?.toUpperCase() || '?'}</span>
+                                            }
+                                        </div>
+                                        <input className="form-input" value={sp.photo_url || ''}
+                                            placeholder="https://example.com/photo.jpg"
+                                            style={{ flex: 1 }}
+                                            onChange={(e) => updateSpeaker(idx, 'photo_url', e.target.value)} />
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label"><Palette size={13} /> Avatar Accent Color <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(used as background when no photo)</span></label>
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                        <input type="color" value={sp.color || '#1a73e8'}
+                                            onChange={(e) => updateSpeaker(idx, 'color', e.target.value)}
+                                            style={{ width: 44, height: 36, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', padding: 2 }} />
+                                        <input className="form-input" value={sp.color}
+                                            placeholder="#1a73e8"
+                                            onChange={(e) => updateSpeaker(idx, 'color', e.target.value)}
+                                            style={{ flex: 1, fontFamily: 'monospace' }} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* ── Community Partners Section ── */}
+            <div className="event-editor-section">
+                <div className="event-editor-section-header">
+                    <div className="event-editor-section-label">🤝 Community Partners ({partners.length})</div>
+                    <button type="button" className="btn btn-sm btn-secondary" onClick={addPartner} id="btn-add-partner">
+                        <Building2 size={14} /> Add Partner
+                    </button>
+                </div>
+                {partners.length === 0 && (
+                    <div className="event-editor-empty">No community partners added yet. Click "Add Partner" to get started.</div>
+                )}
+                <div className="event-section-cards">
+                    {partners.map((pt, idx) => (
+                        <div key={pt.id ?? idx} className="event-section-card event-section-card-sm">
+                            <div className="event-section-card-header">
+                                <span className="event-section-card-title">{pt.name || `Partner ${idx + 1}`}</span>
+                                <button type="button" className="btn btn-danger btn-sm" onClick={() => removePartner(idx)}
+                                    id={`btn-remove-partner-${idx}`} title="Remove partner">
+                                    <Trash2 size={13} />
+                                </button>
+                            </div>
+                            <div className="event-editor-grid" style={{ marginTop: 10 }}>
+                                <div className="form-group">
+                                    <label className="form-label">Organization Name *</label>
+                                    <input className="form-input" value={pt.name} placeholder="e.g. GDG Chandigarh"
+                                        onChange={(e) => updatePartner(idx, 'name', e.target.value)} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label"><Link size={13} /> Logo URL</label>
+                                    <input className="form-input" value={pt.logo_url} placeholder="https://... (image URL)"
+                                        onChange={(e) => updatePartner(idx, 'logo_url', e.target.value)} />
+                                </div>
+                            </div>
+                            {pt.logo_url && (
+                                <div style={{ marginTop: 8 }}>
+                                    <img src={pt.logo_url} alt={pt.name}
+                                        style={{ maxHeight: 48, maxWidth: 120, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border)', padding: 4, background: '#fff' }}
+                                        onError={(e) => { e.target.style.display = 'none'; }} />
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <button type="submit" className="btn btn-primary" disabled={saving} id="btn-save-event" style={{ marginTop: 8 }}>
+                {saving ? <><span className="spinner" /> Saving…</> : <><Save size={16} /> Save All Changes</>}
             </button>
         </form>
     );

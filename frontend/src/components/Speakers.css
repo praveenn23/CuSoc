@@ -25,7 +25,8 @@
 
 .speakers-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    /* columns are set dynamically via --cols prop from Speakers.jsx */
+    grid-template-columns: repeat(var(--cols, 3), 1fr);
     gap: 24px;
 }
 
@@ -126,9 +127,21 @@
     text-decoration: none;
 }
 
+/* tablet: cap at 2 cols */
+@media (max-width: 900px) {
+    .speakers-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        max-width: unset !important;
+        margin: 0 !important;
+    }
+}
+
+/* mobile: single column */
 @media (max-width: 600px) {
     .speakers-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
+        max-width: unset !important;
+        margin: 0 !important;
     }
 
     .section-header {
