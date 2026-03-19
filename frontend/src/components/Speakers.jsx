@@ -1,18 +1,10 @@
 import { Linkedin } from 'lucide-react';
-import prathameshImg from '../assets/guest/PRat.jpg';
-import rudrakshImg from '../assets/guest/Rudraks.jpg';
-import jasjeetImg from '../assets/guest/Jasjeet.jpg';
-import aruImg from '../assets/guest/Aru.jpg';
 import './Speakers.css';
 
-// ── Static fallback speaker data (used when DB has no speakers) ──────────────
-
-// Map initials to local photos (for dynamic speakers that have matching initials)
-
-
 export default function Speakers({ speakers }) {
-    // Use dynamic speakers from DB if available and non-empty, else fall back to static data
-    const data = Array.isArray(speakers) && speakers.length > 0 ? speakers : STATIC_SPEAKERS;
+    // Only render dynamic speakers from the DB.
+    // If none are added yet, show a "Coming Soon" placeholder.
+    const data = Array.isArray(speakers) && speakers.length > 0 ? speakers : [];
 
     // Compute ideal number of grid columns based on speaker count:
     // 1 → 1  (centred),  2 → 2,  3 → 3,  4 → 4,  5+ → 3 (wraps)
@@ -39,39 +31,46 @@ export default function Speakers({ speakers }) {
                     </p>
                 </div>
 
-                <div className="speakers-grid" style={gridStyle}>
-                    {data.map((speaker, idx) => {
-                        // For dynamic speakers: try to match a local photo by initials, else no img
-                        const localAvatar = speaker.photo_url      // 1️⃣ admin-supplied URL
-                            || speaker.avatar           // 2️⃣ bundled static photo (fallback speakers only)
-                            || LOCAL_AVATAR_MAP[speaker.initials] // 3️⃣ local map by initials
-                            || null;
+                {data.length === 0 ? (
+                    // ── Placeholder shown until speakers are added via admin panel ──
+                    <div className="speakers-coming-soon">
+                        <div className="speakers-coming-soon-icon">🎤</div>
+                        <h3>Speakers Coming Soon</h3>
+                        <p>Our lineup of expert speakers will be announced shortly. Stay tuned!</p>
+                    </div>
+                ) : (
+                    <div className="speakers-grid" style={gridStyle}>
+                        {data.map((speaker, idx) => {
+                            // avatar priority: admin-supplied photo_url → initials fallback
+                            const hasPhoto = !!speaker.photo_url;
 
-                        return (
-                            <article className="speaker-card card" key={speaker.id ?? idx}>
-                                <div className="speaker-avatar" style={{ background: speaker.color || '#1a73e8' }}>
-                                    {localAvatar
-                                        ? <img src={localAvatar} alt={speaker.name} />
-                                        : <span>{speaker.initials || speaker.name?.charAt(0)?.toUpperCase() || '?'}</span>
-                                    }
-                                </div>
-                                <div className="speaker-info">
-                                    <h3 className="speaker-name">{speaker.name}</h3>
-                                    <p className="speaker-role">{speaker.role}</p>
-                                    <p className="speaker-bio">{speaker.bio}</p>
-                                    <div className="speaker-links">
-                                        {speaker.linkedin && (
-                                            <a href={speaker.linkedin} target="_blank" rel="noopener noreferrer"
-                                                className="speaker-link" aria-label={`${speaker.name} on LinkedIn`}>
-                                                <Linkedin size={16} />
-                                            </a>
-                                        )}
+                            return (
+                                <article className="speaker-card card" key={speaker.id ?? idx}>
+                                    <div className="speaker-avatar" style={{ background: speaker.color || '#1a73e8' }}>
+                                        {hasPhoto
+                                            ? <img src={speaker.photo_url} alt={speaker.name}
+                                                onError={(e) => { e.target.style.display = 'none'; }} />
+                                            : <span>{speaker.initials || speaker.name?.charAt(0)?.toUpperCase() || '?'}</span>
+                                        }
                                     </div>
-                                </div>
-                            </article>
-                        );
-                    })}
-                </div>
+                                    <div className="speaker-info">
+                                        <h3 className="speaker-name">{speaker.name}</h3>
+                                        <p className="speaker-role">{speaker.role}</p>
+                                        <p className="speaker-bio">{speaker.bio}</p>
+                                        <div className="speaker-links">
+                                            {speaker.linkedin && (
+                                                <a href={speaker.linkedin} target="_blank" rel="noopener noreferrer"
+                                                    className="speaker-link" aria-label={`${speaker.name} on LinkedIn`}>
+                                                    <Linkedin size={16} />
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </section>
     );
