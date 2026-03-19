@@ -1,7 +1,7 @@
 const supabase = require('../config/supabase');
 const transporter = require('../config/mailer');
 
-const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN || 'cuchd.in';
+const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAIN || 'cuchd.in').split(',').map(d => d.trim());
 
 /**
  * Sends a beautiful confirmation email to the registrant
@@ -193,9 +193,9 @@ const register = async (req, res) => {
 
     // Validate university email domain
     const emailDomain = normalizedEmail.split('@')[1];
-    if (!emailDomain || emailDomain !== ALLOWED_DOMAIN) {
+    if (!emailDomain || !ALLOWED_DOMAINS.includes(emailDomain)) {
       return res.status(400).json({
-        error: `Only university emails (@${ALLOWED_DOMAIN}) are allowed`,
+        error: `Only university emails (@${ALLOWED_DOMAINS.join(' or @')}) are allowed`,
       });
     }
 

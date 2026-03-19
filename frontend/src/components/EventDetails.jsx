@@ -169,7 +169,7 @@ export default function EventDetails({ event, bookedSeats, totalSeats }) {
                     {/* ── Right: Banner ── */}
                     <div className="event-banner-col">
                         <div className="event-banner-card">
-                            <img  alt="Event Poster" className="event-poster-image" />
+                            <img src={bannerImg} alt="Event Poster" className="event-poster-image" />
                         </div>
                     </div>
                 </div>
