@@ -709,8 +709,8 @@
 
 .event-editor-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px 20px;
 }
 
 .event-editor-full {
@@ -909,10 +909,6 @@
 @media (max-width: 768px) {
     .admin-topbar-sub {
         display: none;
-    }
-
-    .event-editor-grid {
-        grid-template-columns: 1fr;
     }
 
     .admin-stats-grid {
