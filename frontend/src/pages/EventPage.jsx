@@ -114,7 +114,7 @@ export default function EventPage() {
                     <div className="gdg-strip" />
                     <div className="container footer-inner">
                         <div className="footer-brand">
-                            <span>CuSOC: Chandigarh University Source of Code- An Open Source Awareness Session — Chandigarh University</span>
+                            <span>{event.title} — Chandigarh University</span>
                         </div>
                         <p className="footer-copy">
                             © {new Date().getFullYear()} Praveen Kumar Chandigarh University. All rights reserved.
