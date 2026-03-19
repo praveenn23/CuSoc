@@ -55,8 +55,28 @@
     text-decoration: none;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+    .navbar-inner {
+        flex-direction: column;
+        height: auto;
+        padding: 14px 16px;
+        gap: 12px;
+    }
+
+    .navbar-brand {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .nav-logo {
+        height: 32px;
+    }
+
     .navbar-links {
-        display: none;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        gap: 12px;
     }
 }

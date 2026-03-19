@@ -321,6 +321,9 @@
 
     .event-banner-col {
         position: static;
+        width: 100%;
+        max-width: 440px;
+        margin: 0 auto;
     }
 
     .event-banner-gradient {
