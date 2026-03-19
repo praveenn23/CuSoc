@@ -127,6 +127,36 @@
     text-decoration: none;
 }
 
+/* ── Coming Soon placeholder ─────────────────────────────────────────────── */
+.speakers-coming-soon {
+    text-align: center;
+    padding: 56px 24px;
+    border: 2px dashed var(--border);
+    border-radius: var(--r-xl);
+    background: var(--bg);
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.speakers-coming-soon-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    line-height: 1;
+}
+
+.speakers-coming-soon h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.speakers-coming-soon p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
 /* tablet: cap at 2 cols */
 @media (max-width: 900px) {
     .speakers-grid {
