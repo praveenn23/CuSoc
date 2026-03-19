@@ -55,7 +55,7 @@ export default function SeatCounter({ totalSeats, bookedSeats }) {
             )}
             {isAlmostFull && (
                 <div className="seat-warn-msg">
-                    <span>⚡</span> Hurry! Only {remaining} seats remaining. Deadline to Register- 01:00 PM, 2nd March 2026
+                    <span>⚡</span> Hurry! Only {remaining} seats remaining.
                 </div>
             )}
         </div>
