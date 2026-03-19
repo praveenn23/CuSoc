@@ -3,7 +3,7 @@ import { Mail, ArrowRight, RefreshCw, ShieldCheck } from 'lucide-react';
 import { sendOTP, verifyOTP } from '../services/api';
 import './OTPVerification.css';
 
-const ALLOWED_DOMAIN = import.meta.env.VITE_ALLOWED_EMAIL_DOMAIN || 'cu.edu.in';
+const ALLOWED_DOMAINS = (import.meta.env.VITE_ALLOWED_EMAIL_DOMAIN || 'cuchd.in,cumail.in').split(',').map(d => d.trim());
 
 export default function OTPVerification({ onVerified }) {
     const [email, setEmail] = useState('');
@@ -34,8 +34,8 @@ export default function OTPVerification({ onVerified }) {
         if (!normalizedEmail) return setError('Please enter your email address');
 
         const domain = normalizedEmail.split('@')[1];
-        if (!domain || domain !== ALLOWED_DOMAIN) {
-            return setError(`Only @${ALLOWED_DOMAIN} email addresses are allowed`);
+        if (!domain || !ALLOWED_DOMAINS.includes(domain)) {
+            return setError(`Only ${ALLOWED_DOMAINS.map(d => `@${d}`).join(' or ')} email addresses are allowed`);
         }
 
         setLoadingSend(true);
@@ -129,7 +129,7 @@ export default function OTPVerification({ onVerified }) {
                 </div>
                 <h3 className="otp-heading">Verify Your Email</h3>
                 <p className="otp-desc">
-                    Enter your university email (<strong>@{ALLOWED_DOMAIN}</strong>) to receive an OTP
+                    Enter your university email (<strong>{ALLOWED_DOMAINS.map(d => `@${d}`).join(', ')}</strong>) to receive an OTP
                 </p>
 
                 <form onSubmit={handleSendOTP} className="otp-form" noValidate>
@@ -139,7 +139,7 @@ export default function OTPVerification({ onVerified }) {
                             id="otp-email"
                             type="email"
                             className={`form-input ${error ? 'error' : ''}`}
-                            placeholder={`example@${ALLOWED_DOMAIN}`}
+                            placeholder={`example@${ALLOWED_DOMAINS[0]}`}
                             value={email}
                             onChange={(e) => { setEmail(e.target.value); setError(''); }}
                             required
