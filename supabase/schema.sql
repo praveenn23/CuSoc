@@ -52,13 +52,43 @@ CREATE TABLE IF NOT EXISTS registrations (
   email TEXT NOT NULL UNIQUE,
   -- one registration per email
   phone TEXT NOT NULL,
-  course TEXT,
+  cluster TEXT,
+  department TEXT,
+  achievement_level TEXT,
+  rank TEXT,
+  competition_name TEXT,
+  awards_prize TEXT,
+  proof_1_url TEXT,
+  proof_2_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   ticket_sent_at TIMESTAMPTZ DEFAULT NULL,
   attended_at TIMESTAMPTZ DEFAULT NULL
 );
+
+-- ADD NEW COLUMNS IF TABLE ALREADY EXISTS (Safe for re-runs)
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS cluster TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS department TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS achievement_level TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS rank TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS competition_name TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS awards_prize TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS proof_1_url TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS proof_2_url TEXT;
+
 -- Fast email lookups (duplicate check, OTP match)
 CREATE INDEX IF NOT EXISTS idx_registrations_email ON registrations(email);
+
+-- ────────────────────────────────────────────────────────────
+-- Storage Bucket Setup for Proofs
+-- ────────────────────────────────────────────────────────────
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('proofs', 'proofs', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Public read access
+CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'proofs');
+-- Allow authenticated insert
+CREATE POLICY "Anon Insert" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = 'proofs');
 -- ────────────────────────────────────────────────────────────
 -- Table: otp_verifications
 -- ────────────────────────────────────────────────────────────
@@ -242,3 +272,28 @@ SET title = EXCLUDED.title,
 -- Check registrations:
 --   SELECT COUNT(*) FROM registrations;
 -- ────────────────────────────────────────────────────────────
+
+-- ────────────────────────────────────────────────────────────
+-- Trigger: Auto-Sync Booked Seats
+-- Automatically updates the booked_seats count whenever a 
+-- registration is inserted or deleted, preventing any desync
+-- even when dropping rows manually through the Supabase UI.
+-- ────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION trg_sync_booked_seats()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    UPDATE event SET booked_seats = (SELECT COUNT(*) FROM registrations);
+    RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trigger_sync_seats ON registrations;
+CREATE TRIGGER trigger_sync_seats
+AFTER INSERT OR DELETE ON registrations
+FOR EACH STATEMENT
+EXECUTE FUNCTION trg_sync_booked_seats();
+
+-- 🔥 IMPORTANT: FORCE SYNC BOOKED_SEATS NOW 🔥
+-- This will fix any mismatched "booked seats are still full" issue immediately 
+-- the moment you paste this code.
+SELECT sync_booked_seats();

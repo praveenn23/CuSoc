@@ -6,7 +6,7 @@ const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN || 'cuchd.in';
 /**
  * Sends a beautiful confirmation email to the registrant
  */
-const sendConfirmationEmail = async ({ name, email, course, event }) => {
+const sendConfirmationEmail = async ({ name, email, cluster, department, event }) => {
   const eventDate = new Date(event.date).toLocaleDateString('en-IN', {
     weekday: 'long',
     year: 'numeric',
@@ -110,8 +110,7 @@ const sendConfirmationEmail = async ({ name, email, course, event }) => {
                     </tr>
                   </table>
 
-                  ${course ? `
-                  <!-- Course -->
+                  <!-- Department & Cluster -->
                   <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
                     <tr>
                       <td width="40" valign="top">
@@ -120,11 +119,11 @@ const sendConfirmationEmail = async ({ name, email, course, event }) => {
                         </div>
                       </td>
                       <td style="padding-left:12px;vertical-align:middle;">
-                        <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Course / Year</div>
-                        <div style="font-size:15px;font-weight:500;color:#202124;">${course}</div>
+                        <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Department</div>
+                        <div style="font-size:15px;font-weight:500;color:#202124;">${department} (${cluster})</div>
                       </td>
                     </tr>
-                  </table>` : ''}
+                  </table>
                 </td>
               </tr>
 
@@ -179,11 +178,15 @@ const sendConfirmationEmail = async ({ name, email, course, event }) => {
  */
 const register = async (req, res) => {
   try {
-    const { name, email, phone, course, otp } = req.body;
+    const { 
+        name, email, phone, otp,
+        cluster, department, achievement_level, rank, 
+        competition_name, awards_prize, proof_1_url, proof_2_url 
+    } = req.body;
 
     // Basic field validation
-    if (!name || !email || !phone || !otp) {
-      return res.status(400).json({ error: 'Name, email, phone, and OTP are required' });
+    if (!name || !email || !phone || !otp || !cluster || !department || !achievement_level || !rank || !competition_name || !awards_prize) {
+      return res.status(400).json({ error: 'All required fields must be provided' });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -250,7 +253,14 @@ const register = async (req, res) => {
       name: name.trim(),
       email: normalizedEmail,
       phone: phoneDigits,
-      course: course ? course.trim() : null,
+      cluster: cluster.trim(),
+      department: department.trim(),
+      achievement_level: achievement_level.trim(),
+      rank: rank.trim(),
+      competition_name: competition_name.trim(),
+      awards_prize: awards_prize.trim(),
+      proof_1_url: proof_1_url || null,
+      proof_2_url: proof_2_url || null,
     });
 
     if (insertError) {
@@ -289,7 +299,8 @@ const register = async (req, res) => {
     sendConfirmationEmail({
       name: name.trim(),
       email: normalizedEmail,
-      course: course ? course.trim() : null,
+      cluster: cluster.trim(),
+      department: department.trim(),
       event,
     }).catch((emailErr) => {
       console.error('Confirmation email failed (non-fatal):', emailErr.message);

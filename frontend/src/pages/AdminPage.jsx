@@ -678,7 +678,8 @@ export default function AdminPage({ onLogout }) {
                 r.name.toLowerCase().includes(q) ||
                 r.email.toLowerCase().includes(q) ||
                 (r.phone || '').includes(q) ||
-                (r.course || '').toLowerCase().includes(q)
+                (r.department || '').toLowerCase().includes(q) ||
+                (r.cluster || '').toLowerCase().includes(q)
             );
             const attendMatch =
                 attendFilter === 'all' ? true :
@@ -870,7 +871,7 @@ export default function AdminPage({ onLogout }) {
                                 <input
                                     type="search"
                                     className="admin-search-input"
-                                    placeholder="Search by name, email, phone, course…"
+                                    placeholder="Search by name, email, phone, department, cluster…"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     id="admin-search"
@@ -940,7 +941,7 @@ export default function AdminPage({ onLogout }) {
                                                 Email <SortIcon col="email" />
                                             </th>
                                             <th>Phone</th>
-                                            <th>Course / Year</th>
+                                            <th>Department & Cluster</th>
                                             <th onClick={() => toggleSort('created_at')} className="sortable">
                                                 Registered At <SortIcon col="created_at" />
                                             </th>
@@ -960,7 +961,10 @@ export default function AdminPage({ onLogout }) {
                                                 </td>
                                                 <td className="admin-td-email">{r.email}</td>
                                                 <td>{r.phone}</td>
-                                                <td>{r.course || <span className="admin-td-empty">—</span>}</td>
+                                                <td>
+                                                    {r.department || <span className="admin-td-empty">—</span>}
+                                                    {r.cluster && <><br /><small className="text-muted">{r.cluster}</small></>}
+                                                </td>
                                                 <td className="admin-td-date">{formatDate(r.created_at)}</td>
                                                 <td>
                                                     {r.attended_at ? (
@@ -1117,7 +1121,7 @@ export default function AdminPage({ onLogout }) {
                                             <div className="scan-result-title">Marked Present!</div>
                                             <div className="scan-result-name">{scanResult.data?.name}</div>
                                             <div className="scan-result-meta">
-                                                {scanResult.data?.email} &bull; {scanResult.data?.course || 'N/A'}
+                                                {scanResult.data?.email} &bull; {scanResult.data?.department || 'N/A'} ({scanResult.data?.cluster || 'N/A'})
                                             </div>
                                             <div className="scan-result-code">{scanResult.data?.ticketCode}</div>
                                         </div>
@@ -1130,7 +1134,7 @@ export default function AdminPage({ onLogout }) {
                                             <div className="scan-result-title">Already Present!</div>
                                             <div className="scan-result-name">{scanResult.data?.name}</div>
                                             <div className="scan-result-meta">
-                                                {scanResult.data?.email} &bull; {scanResult.data?.course || 'N/A'}
+                                                {scanResult.data?.email} &bull; {scanResult.data?.department || 'N/A'} ({scanResult.data?.cluster || 'N/A'})
                                             </div>
                                             <div className="scan-result-code">{scanResult.data?.ticketCode} — duplicate scan</div>
                                         </div>

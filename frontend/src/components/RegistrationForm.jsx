@@ -1,7 +1,15 @@
-import { useState } from 'react';
-import { User, Phone, BookOpen, ArrowRight, ChevronDown } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { User, Phone, BookOpen, ArrowRight, ChevronDown, Award, Star, Upload, Trophy, Shield } from 'lucide-react';
 import { registerUser } from '../services/api';
+import { supabase } from '../supabaseClient';
 import './RegistrationForm.css';
+
+const CLUSTERS = [
+    'Engineering',
+    'Management',
+    'Liberal Arts and Humanities',
+    'Science'
+];
 
 // ── All CU Departments ────────────────────────────────────────────────────────
 const DEPARTMENTS = [
@@ -76,7 +84,12 @@ const DEPARTMENTS = [
 ];
 
 export default function RegistrationForm({ email, otp, onSuccess }) {
-    const [form, setForm] = useState({ name: '', phone: '', department: '' });
+    const [form, setForm] = useState({
+        name: '', phone: '', cluster: '', department: '',
+        achievement_level: '', rank: '', competition_name: '', awards_prize: ''
+    });
+    const [proof1, setProof1] = useState(null);
+    const [proof2, setProof2] = useState(null);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [globalError, setGlobalError] = useState('');
@@ -88,22 +101,30 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
         setGlobalError('');
     };
 
+    const handleFileChange = (e, setFile, fieldName) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setFile(e.target.files[0]);
+            setErrors((prev) => ({ ...prev, [fieldName]: '' }));
+        } else {
+            setFile(null);
+        }
+    };
+
     const validate = () => {
         const newErrors = {};
-
-        if (!form.name.trim())
-            newErrors.name = 'Full name is required';
-        else if (form.name.trim().length < 2)
-            newErrors.name = 'Name must be at least 2 characters';
+        if (!form.name.trim()) newErrors.name = 'Full name is required';
+        else if (form.name.trim().length < 2) newErrors.name = 'Name must be at least 2 characters';
 
         const phoneDigits = form.phone.replace(/\D/g, '');
-        if (!form.phone.trim())
-            newErrors.phone = 'Phone number is required';
-        else if (phoneDigits.length < 10)
-            newErrors.phone = 'Enter a valid 10-digit phone number';
+        if (!form.phone.trim()) newErrors.phone = 'Phone number is required';
+        else if (phoneDigits.length < 10) newErrors.phone = 'Enter a valid 10-digit phone number';
 
-        if (!form.department)
-            newErrors.department = 'Please select your department';
+        if (!form.cluster) newErrors.cluster = 'Please select your cluster';
+        if (!form.department) newErrors.department = 'Please select your department';
+        if (!form.achievement_level.trim()) newErrors.achievement_level = 'Achievement Level is required';
+        if (!form.rank.trim()) newErrors.rank = 'Rank is required';
+        if (!form.competition_name.trim()) newErrors.competition_name = 'Competition / Award Name is required';
+        if (!form.awards_prize.trim()) newErrors.awards_prize = 'Awards / Prize is required';
 
         return newErrors;
     };
@@ -119,16 +140,46 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
         setLoading(true);
         setGlobalError('');
         try {
+            let proof_1_url = '';
+            let proof_2_url = '';
+
+            // Upload Proof 1 if provided
+            if (proof1) {
+                const fileExt = proof1.name.split('.').pop();
+                const fileName = `proof1_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const { error: uploadError1 } = await supabase.storage.from('proofs').upload(fileName, proof1);
+                if (uploadError1) throw new Error('Failed to upload Proof 1: ' + uploadError1.message);
+                const { data } = supabase.storage.from('proofs').getPublicUrl(fileName);
+                proof_1_url = data.publicUrl;
+            }
+
+            // Upload Proof 2 if provided
+            if (proof2) {
+                const fileExt = proof2.name.split('.').pop();
+                const fileName = `proof2_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const { error: uploadError2 } = await supabase.storage.from('proofs').upload(fileName, proof2);
+                if (uploadError2) throw new Error('Failed to upload Proof 2: ' + uploadError2.message);
+                const { data } = supabase.storage.from('proofs').getPublicUrl(fileName);
+                proof_2_url = data.publicUrl;
+            }
+
             await registerUser({
                 name: form.name.trim(),
                 email,
                 phone: form.phone.replace(/\D/g, ''),
-                course: form.department,   // stored as "course" in the DB
+                cluster: form.cluster,
+                department: form.department,
+                achievement_level: form.achievement_level.trim(),
+                rank: form.rank.trim(),
+                competition_name: form.competition_name.trim(),
+                awards_prize: form.awards_prize.trim(),
+                proof_1_url,
+                proof_2_url,
                 otp,
             });
             onSuccess();
         } catch (err) {
-            setGlobalError(err.response?.data?.error || 'Registration failed. Please try again.');
+            setGlobalError(err.response?.data?.error || err.message || 'Registration failed. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -188,6 +239,29 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
                     {errors.phone && <span className="form-error">⚠ {errors.phone}</span>}
                 </div>
 
+                {/* Cluster Dropdown */}
+                <div className="form-group">
+                    <label className="form-label" htmlFor="reg-cluster">
+                        <Award size={14} /> Cluster <span className="required-star">*</span>
+                    </label>
+                    <div className="reg-select-wrap">
+                        <select
+                            id="reg-cluster"
+                            name="cluster"
+                            className={`form-input reg-select ${errors.cluster ? 'error' : ''} ${form.cluster ? 'selected' : ''}`}
+                            value={form.cluster}
+                            onChange={handleChange}
+                        >
+                            <option value="" disabled>— Select your cluster —</option>
+                            {CLUSTERS.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+                        <ChevronDown size={16} className="reg-select-chevron" />
+                    </div>
+                    {errors.cluster && <span className="form-error">⚠ {errors.cluster}</span>}
+                </div>
+
                 {/* Department Dropdown */}
                 <div className="form-group">
                     <label className="form-label" htmlFor="reg-department">
@@ -211,6 +285,102 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
                         <ChevronDown size={16} className="reg-select-chevron" />
                     </div>
                     {errors.department && <span className="form-error">⚠ {errors.department}</span>}
+                </div>
+
+                {/* Achievement Level */}
+                <div className="form-group">
+                    <label className="form-label" htmlFor="reg-achievement">
+                        <Star size={14} /> Achievement Level <span className="required-star">*</span>
+                    </label>
+                    <input
+                        id="reg-achievement"
+                        type="text"
+                        name="achievement_level"
+                        className={`form-input ${errors.achievement_level ? 'error' : ''}`}
+                        placeholder="e.g. National, International, State"
+                        value={form.achievement_level}
+                        onChange={handleChange}
+                    />
+                    {errors.achievement_level && <span className="form-error">⚠ {errors.achievement_level}</span>}
+                </div>
+
+                {/* Rank */}
+                <div className="form-group">
+                    <label className="form-label" htmlFor="reg-rank">
+                        <Trophy size={14} /> Rank <span className="required-star">*</span>
+                    </label>
+                    <input
+                        id="reg-rank"
+                        type="text"
+                        name="rank"
+                        className={`form-input ${errors.rank ? 'error' : ''}`}
+                        placeholder="e.g. 1st, 2nd, Runner-up"
+                        value={form.rank}
+                        onChange={handleChange}
+                    />
+                    {errors.rank && <span className="form-error">⚠ {errors.rank}</span>}
+                </div>
+
+                {/* Competition Name */}
+                <div className="form-group">
+                    <label className="form-label" htmlFor="reg-competition">
+                        <Shield size={14} /> Competition / Award Name <span className="required-star">*</span>
+                    </label>
+                    <input
+                        id="reg-competition"
+                        type="text"
+                        name="competition_name"
+                        className={`form-input ${errors.competition_name ? 'error' : ''}`}
+                        placeholder="e.g. SIH 2024, Best Coder"
+                        value={form.competition_name}
+                        onChange={handleChange}
+                    />
+                    {errors.competition_name && <span className="form-error">⚠ {errors.competition_name}</span>}
+                </div>
+
+                {/* Awards / Prize */}
+                <div className="form-group">
+                    <label className="form-label" htmlFor="reg-awards">
+                        <Award size={14} /> Awards / Prize <span className="required-star">*</span>
+                    </label>
+                    <input
+                        id="reg-awards"
+                        type="text"
+                        name="awards_prize"
+                        className={`form-input ${errors.awards_prize ? 'error' : ''}`}
+                        placeholder="e.g. $10,000, Gold Medal"
+                        value={form.awards_prize}
+                        onChange={handleChange}
+                    />
+                    {errors.awards_prize && <span className="form-error">⚠ {errors.awards_prize}</span>}
+                </div>
+
+                {/* Proof 1 */}
+                <div className="form-group">
+                    <label className="form-label" htmlFor="reg-proof1">
+                        <Upload size={14} /> Proof 1 (Upload PDF) <span className="optional-text">(Optional)</span>
+                    </label>
+                    <input
+                        id="reg-proof1"
+                        type="file"
+                        accept="application/pdf"
+                        className="form-input file-input"
+                        onChange={(e) => handleFileChange(e, setProof1, 'proof1')}
+                    />
+                </div>
+
+                {/* Proof 2 */}
+                <div className="form-group">
+                    <label className="form-label" htmlFor="reg-proof2">
+                        <Upload size={14} /> Proof 2 (Upload JPEG) <span className="optional-text">(Optional)</span>
+                    </label>
+                    <input
+                        id="reg-proof2"
+                        type="file"
+                        accept="image/jpeg, image/jpg"
+                        className="form-input file-input"
+                        onChange={(e) => handleFileChange(e, setProof2, 'proof2')}
+                    />
                 </div>
 
                 <button

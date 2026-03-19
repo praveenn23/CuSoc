@@ -262,7 +262,7 @@ const sendTickets = async (req, res) => {
         chunk.map(async (reg) => {
           // Last 4 chars of UUID (uppercase)
           const ticketNo = `EVT-${reg.id.slice(-4).toUpperCase()}`;
-          const department = reg.course || 'N/A';
+          const department = reg.department || 'N/A';
 
           const html = `
 <!DOCTYPE html>
@@ -553,7 +553,7 @@ const markAttendance = async (req, res) => {
       console.warn('find_by_ticket_code RPC unavailable, using fallback:', rpcErr.message);
       const { data: allRegs, error: fetchErr } = await supabase
         .from('registrations')
-        .select('id, name, email, phone, course, attended_at')
+        .select('id, name, email, phone, cluster, department, attended_at')
         .range(0, 4999);
 
       if (fetchErr) throw fetchErr;
@@ -578,7 +578,8 @@ const markAttendance = async (req, res) => {
         registration: {
           name: reg.name,
           email: reg.email,
-          course: reg.course,
+          department: reg.department,
+          cluster: reg.cluster,
           attendedAt: reg.attended_at,
           ticketCode: `EVT-${code}`,
         },
@@ -600,7 +601,8 @@ const markAttendance = async (req, res) => {
       registration: {
         name: reg.name,
         email: reg.email,
-        course: reg.course,
+        department: reg.department,
+        cluster: reg.cluster,
         ticketCode: `EVT-${code}`,
       },
     });
