@@ -87,7 +87,7 @@ export default function EventPage() {
 
     return (
         <>
-            <Navbar onRegister={() => setModalOpen(true)} />
+            <Navbar onRegister={() => setModalOpen(true)} hasSpeakers={Array.isArray(event.speakers) && event.speakers.length > 0} />
 
             {/* ── Event Details Section ── */}
             <main id="main">
