@@ -86,8 +86,11 @@ VALUES ('proofs', 'proofs', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Public read access
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
 CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'proofs');
+
 -- Allow authenticated insert
+DROP POLICY IF EXISTS "Anon Insert" ON storage.objects;
 CREATE POLICY "Anon Insert" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = 'proofs');
 -- ────────────────────────────────────────────────────────────
 -- Table: otp_verifications
@@ -248,14 +251,7 @@ Spaces are strictly limited to ensure personalized mentoring and effective hands
       {"id":1,"name":"CAC","logo_url":""},
       {"id":2,"name":"CU Play Nation","logo_url":""}
     ]'::jsonb
-  ) ON CONFLICT (singleton) DO
-UPDATE
-SET title = EXCLUDED.title,
-  description = EXCLUDED.description,
-  date = EXCLUDED.date,
-  time = EXCLUDED.time,
-  venue = EXCLUDED.venue,
-  total_seats = EXCLUDED.total_seats;
+  ) ON CONFLICT (singleton) DO NOTHING;
 -- NOTE: about_text, event_sections, speakers, partners are intentionally NOT
 --       synced in the seed upsert so admin edits are preserved on re-run.
 -- NOTE: booked_seats is intentionally NOT updated here
