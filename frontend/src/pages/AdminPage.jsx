@@ -104,8 +104,19 @@ function EventEditor({ event, onSaved }) {
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
 
-    // Keep form in sync when event prop changes
+    // Ref to track when a save was just performed so we skip the re-sync
+    // that would otherwise overwrite local state with the (already correct)
+    // server response freshly returned from handleSave.
+    const justSavedRef = useRef(false);
+
+    // Keep form in sync when the event prop changes externally (e.g. initial
+    // load, or parent refreshes data).  Skip the re-sync immediately after a
+    // save — local state is already up-to-date from the save payload.
     useEffect(() => {
+        if (justSavedRef.current) {
+            justSavedRef.current = false;
+            return;
+        }
         setForm({ ...event });
         setAboutText(event.about_text || '');
         setSections(Array.isArray(event.event_sections) ? event.event_sections : []);
@@ -178,10 +189,19 @@ function EventEditor({ event, onSaved }) {
                 speakers,
                 partners,
             });
-            setSuccess('Event updated successfully!');
+
+            if (!data?.event) {
+                throw new Error('Server did not return the updated event.');
+            }
+
+            // Mark that we just saved so the useEffect sync is skipped once —
+            // local state already reflects what was saved.
+            justSavedRef.current = true;
+
             onSaved(data.event);
+            setSuccess('Event updated successfully!');
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to update event.');
+            setError(err.response?.data?.error || err.message || 'Failed to update event.');
         } finally {
             setSaving(false);
         }
