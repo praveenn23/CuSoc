@@ -258,7 +258,7 @@ const sendTickets = async (req, res) => {
           <td style="background:linear-gradient(135deg,#1a73e8 0%,#0d47a1 100%);padding:36px 32px;text-align:center;">
             <div style="display:inline-block;background:white;border-radius:12px;padding:8px 18px;margin-bottom:16px;">
               <span style="font-size:24px;font-weight:700;letter-spacing:-1px;">
-                <span style="color:#ea4335">C</span><span style="color:#fbbc04">u</span><span style="color:#34a853">S</span><span style="color:#ea4335">O</span><span style="color:#fbbc04">C</span>
+                <span style="color:#292b2e">O</span><span style="color:#ea4335">A</span><span style="color:#ea4335">A</span>
               </span>
             </div>
             <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;line-height:1.3;">🎟 Event Ticket Confirmation</h1>
@@ -414,13 +414,13 @@ const sendTickets = async (req, res) => {
                 Stay updated with event announcements, schedules, and last-minute changes.<br />
                 Join our official WhatsApp group for participants:
               </p>
-              <a href="https://chat.whatsapp.com/Jo4tCxHlsmfIU5wwL2rcnb?mode=gi_t"
+              <a href="https://chat.whatsapp.com/GOzVfSfxsggCrMJFAGnucs"
                 target="_blank"
                 style="display:inline-block;background:#25d366;color:#ffffff;font-size:14px;font-weight:700;padding:12px 28px;border-radius:50px;text-decoration:none;letter-spacing:.3px;">
                 🟢 Join WhatsApp Group
               </a>
               <p style="margin:10px 0 0;font-size:11px;color:#9aa0a6;">
-                Or copy link: chat.whatsapp.com/Jo4tCxHlsmfIU5wwL2rcnb
+                Or copy link: chat.whatsapp.com/GOzVfSfxsggCrMJFAGnucs
               </p>
             </div>
           </td>
@@ -432,9 +432,9 @@ const sendTickets = async (req, res) => {
             <p style="margin:16px 0 6px;font-size:14px;font-weight:600;color:#202124;">We look forward to your active participation!</p>
             <p style="margin:0;font-size:13px;color:#5f6368;line-height:2;">
               Best Regards,<br />
-              <strong>CuSOC Organizing Team</strong><br />
+              <strong>ABHYUTTHANAM Organizing Team</strong><br />
               ${event.title}<br />
-              Chandigarh University Student Chapter<br />
+              Chandigarh University<br />
               <span style="color:#9aa0a6;font-size:12px;">Approved under: University Level (Co-Curricular Clubs) | ACO Certified</span>
             </p>
           </td>
@@ -447,7 +447,7 @@ const sendTickets = async (req, res) => {
         <tr>
           <td style="padding:14px 32px;text-align:center;">
             <p style="margin:0;font-size:12px;color:#9aa0a6;">
-              © ${new Date().getFullYear()} CuSOC, Chandigarh University — See you there! 🎉
+              © ${new Date().getFullYear()} ABHYUTTHANAM, Chandigarh University — See you there! 🎉
             </p>
           </td>
         </tr>
@@ -460,9 +460,9 @@ const sendTickets = async (req, res) => {
 
           try {
             await transporter.sendMail({
-              from: `"CuSOC Events" <${process.env.EMAIL_FROM}>`,
+              from: `"ABHYUTTHANAM" <${process.env.EMAIL_FROM}>`,
               to: reg.email,
-              subject: `🎟 Your Event Ticket Confirmation – CUSOC | ${ticketNo}`,
+              subject: `🎟 Your Event Ticket Confirmation – ABHYUTTHANAM | ${ticketNo}`,
               html,
             });
             results.sent++;
