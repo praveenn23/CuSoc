@@ -93,59 +93,67 @@ function ViewDetailsModal({ registration, onCancel }) {
     if (!registration) return null;
 
     return (
-        <div className="modal-overlay" onClick={onCancel} role="dialog" aria-modal="true">
-            <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 650, width: '90%', maxHeight: '85vh', overflowY: 'auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <h3 style={{ margin: 0 }}>Registration Details</h3>
-                    <button className="btn btn-secondary btn-sm" onClick={onCancel} style={{ padding: '4px 8px' }}><X size={16} /></button>
+        <div className="modal-overlay" onClick={onCancel} role="dialog" aria-modal="true" style={{ padding: '20px' }}>
+            <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 750, width: '100%', maxHeight: 'calc(100vh - 40px)', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+                {/* Header (sticky) */}
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', position: 'sticky', top: 0, zIndex: 10 }}>
+                    <h3 style={{ margin: 0, fontSize: 18, color: '#202124' }}>Registration Details</h3>
+                    <button className="btn btn-secondary btn-sm" onClick={onCancel} style={{ padding: '6px', borderRadius: '50%' }}><X size={16} /></button>
                 </div>
                 
-                <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: 8, marginBottom: 16 }}>
-                    <div style={{ fontWeight: 600, fontSize: 16 }}>{registration.name}</div>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
-                        {registration.email} &bull; {registration.uid} &bull; {registration.type}
+                {/* Scrollable Body */}
+                <div style={{ padding: '24px', overflowY: 'auto' }}>
+                    <div style={{ padding: '16px', background: '#f8f9fa', borderRadius: 12, marginBottom: 24, border: '1px solid #e8eaed' }}>
+                        <div style={{ fontWeight: 600, fontSize: 18, color: '#202124' }}>{registration.name}</div>
+                        <div style={{ color: '#5f6368', fontSize: 14, marginTop: 8, display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={13}/> {registration.email}</span> &bull; 
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Hash size={13}/> {registration.uid}</span> &bull; 
+                            <span style={{ fontWeight: 600, color: registration.type === 'Student' ? '#1a73e8' : '#137333', background: registration.type === 'Student' ? '#e8f0fe' : '#e6f4ea', padding: '2px 8px', borderRadius: 12 }}>{registration.type}</span>
+                        </div>
+                        <div style={{ color: '#5f6368', fontSize: 14, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Building2 size={13}/> {registration.department} {registration.cluster ? `(${registration.cluster})` : ''}
+                        </div>
                     </div>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
-                        {registration.department} {registration.cluster ? `(${registration.cluster})` : ''}
-                    </div>
-                </div>
 
-                <h4 style={{ margin: '0 0 12px 0', borderBottom: '1px solid #eee', paddingBottom: 8 }}>Applied Categories</h4>
-                
-                {(!registration.categories || registration.categories.length === 0) ? (
-                    <p className="text-muted" style={{ fontSize: 14 }}>No specific category data submitted.</p>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        {registration.categories.map((cat, i) => (
-                            <div key={i} style={{ border: '1px solid #e0e0e0', borderRadius: 8, overflow: 'hidden' }}>
-                                <div style={{ background: '#f1f3f4', padding: '8px 12px', fontWeight: 600, borderBottom: '1px solid #e0e0e0', textTransform: 'capitalize' }}>
-                                    {cat.type}
+                    <h4 style={{ margin: '0 0 16px 0', paddingBottom: 8, fontSize: 16, color: '#202124', fontWeight: 600 }}>Applied Categories</h4>
+                    
+                    {(!registration.categories || registration.categories.length === 0) ? (
+                        <div style={{ padding: '20px', background: '#f8f9fa', borderRadius: 8, textAlign: 'center', color: '#5f6368', border: '1px dashed #dadce0' }}>
+                            No specific category data submitted.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            {registration.categories.map((cat, i) => (
+                                <div key={i} style={{ border: '1px solid #e8eaed', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                                    <div style={{ background: '#f1f3f4', padding: '12px 16px', fontWeight: 600, borderBottom: '1px solid #e8eaed', textTransform: 'capitalize', color: '#202124' }}>
+                                        {cat.type}
+                                    </div>
+                                    <div style={{ padding: '20px 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px 20px' }}>
+                                        {Object.entries(cat.data || {}).map(([key, val]) => {
+                                            // Format key nicely, e.g. "comp_name" -> "Comp Name"
+                                            const niceKey = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                                            const isUrl = typeof val === 'string' && val.startsWith('http');
+                                            return (
+                                                <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                    <span style={{ fontSize: 12, color: '#5f6368', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{niceKey}</span>
+                                                    {isUrl ? (
+                                                        <a href={val} target="_blank" rel="noopener noreferrer" style={{ color: '#1a73e8', textDecoration: 'none', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500, background: '#e8f0fe', padding: '8px 12px', borderRadius: 6, width: 'fit-content', border: '1px solid #d2e3fc' }}>
+                                                            <Link size={14} /> View Document
+                                                        </a>
+                                                    ) : (
+                                                        <span style={{ fontSize: 15, color: '#202124', wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                                                            {typeof val === 'boolean' ? (val ? 'Yes' : 'No') : (val || '-')}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                                <div style={{ padding: '12px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
-                                    {Object.entries(cat.data || {}).map(([key, val]) => {
-                                        // Format key nicely, e.g. "comp_name" -> "Comp Name"
-                                        const niceKey = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                                        const isUrl = typeof val === 'string' && val.startsWith('http');
-                                        return (
-                                            <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{niceKey}</span>
-                                                {isUrl ? (
-                                                    <a href={val} target="_blank" rel="noopener noreferrer" style={{ color: '#1a73e8', textDecoration: 'none', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
-                                                        <Link size={12} /> View Uploaded File
-                                                    </a>
-                                                ) : (
-                                                    <span style={{ fontSize: 14, color: 'var(--text-primary)', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                                                        {typeof val === 'boolean' ? (val ? 'Yes' : 'No') : (val || '-')}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
