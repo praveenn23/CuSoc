@@ -4,23 +4,33 @@ const transporter = require('../config/mailer');
 const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAIN || 'cuchd.in').split(',').map(d => d.trim());
 
 /**
- * Sends a beautiful confirmation email to the registrant
+ * Sends a confirmation email to the registrant
  */
-const sendConfirmationEmail = async ({ name, email, cluster, department, event }) => {
+const sendConfirmationEmail = async ({ name, email, cluster, department, type, categories, event }) => {
   const eventDate = new Date(event.date).toLocaleDateString('en-IN', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
   const eventTime = event.time || new Date(event.date).toLocaleTimeString('en-IN', {
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 
+  const categoryNames = {
+    research: '🔬 Research Award',
+    innovation: '💡 New Innovators',
+    entrepreneurship: '🚀 Entrepreneurship',
+    competitions: '🏆 Competitions & Hackathons',
+    patents: '📜 Patents',
+    certifications: '🎓 Certifications / Leadership',
+  };
+
+  const catListHtml = categories.map(c =>
+    `<li style="margin-bottom:4px;">${categoryNames[c.type] || c.type}</li>`
+  ).join('');
+
   await transporter.sendMail({
     from: `"CuSOC Events" <${process.env.EMAIL_FROM}>`,
     to: email,
-    subject: `✅ Registration Confirmed — ${event.title}`,
+    subject: `✅ Application Received — ${event.title}`,
     html: `
       <!DOCTYPE html>
       <html lang="en">
@@ -39,40 +49,29 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, event }
                       <span style="color:#ea4335">C</span><span style="color:#fbbc04">u</span><span style="color:#34a853">S</span><span style="color:#ea4335">O</span><span style="color:#fbbc04">C</span>
                     </span>
                   </div>
-                  <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;line-height:1.3;">
-                    You're In! 🎉
-                  </h1>
-                  <p style="color:rgba(255,255,255,.8);margin:8px 0 0;font-size:14px;">
-                    Registration Confirmed
-                  </p>
+                  <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;line-height:1.3;">Application Received! 🎉</h1>
+                  <p style="color:rgba(255,255,255,.8);margin:8px 0 0;font-size:14px;">ABHYUTTHANAM: Achievers Awards</p>
                 </td>
               </tr>
 
-              <!-- Green tick banner -->
+              <!-- Green tick -->
               <tr>
                 <td style="background:#e6f4ea;padding:20px 32px;text-align:center;border-bottom:1px solid #ceead6;">
                   <span style="font-size:40px;">✅</span>
                   <p style="margin:8px 0 0;color:#137333;font-size:15px;font-weight:600;">
-                    Hi ${name}, your spot is confirmed!
+                    Hi ${name}, your application has been submitted!
                   </p>
                 </td>
               </tr>
 
-              <!-- Event Details -->
+              <!-- Details -->
               <tr>
                 <td style="padding:28px 32px;">
-                  <h2 style="margin:0 0 20px;font-size:18px;font-weight:700;color:#202124;">
-                    ${event.title}
-                  </h2>
+                  <h2 style="margin:0 0 20px;font-size:18px;font-weight:700;color:#202124;">${event.title}</h2>
 
-                  <!-- Date -->
                   <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
                     <tr>
-                      <td width="40" valign="top">
-                        <div style="width:36px;height:36px;background:#e8f0fe;border-radius:8px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:36px;font-size:18px;">
-                          📅
-                        </div>
-                      </td>
+                      <td width="40" valign="top"><div style="width:36px;height:36px;background:#e8f0fe;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">📅</div></td>
                       <td style="padding-left:12px;vertical-align:middle;">
                         <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Date</div>
                         <div style="font-size:15px;font-weight:500;color:#202124;">${eventDate}</div>
@@ -80,29 +79,9 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, event }
                     </tr>
                   </table>
 
-                  <!-- Time -->
                   <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
                     <tr>
-                      <td width="40" valign="top">
-                        <div style="width:36px;height:36px;background:#e6f4ea;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">
-                          🕐
-                        </div>
-                      </td>
-                      <td style="padding-left:12px;vertical-align:middle;">
-                        <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Time</div>
-                        <div style="font-size:15px;font-weight:500;color:#202124;">${eventTime}</div>
-                      </td>
-                    </tr>
-                  </table>
-
-                  <!-- Venue -->
-                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
-                    <tr>
-                      <td width="40" valign="top">
-                        <div style="width:36px;height:36px;background:#fce8e6;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">
-                          📍
-                        </div>
-                      </td>
+                      <td width="40" valign="top"><div style="width:36px;height:36px;background:#e6f4ea;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">📍</div></td>
                       <td style="padding-left:12px;vertical-align:middle;">
                         <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Venue</div>
                         <div style="font-size:15px;font-weight:500;color:#202124;">${event.venue}</div>
@@ -110,59 +89,37 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, event }
                     </tr>
                   </table>
 
-                  <!-- Department & Cluster -->
                   <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
                     <tr>
-                      <td width="40" valign="top">
-                        <div style="width:36px;height:36px;background:#fef7e0;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">
-                          🎓
-                        </div>
-                      </td>
+                      <td width="40" valign="top"><div style="width:36px;height:36px;background:#fce8e6;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">🎓</div></td>
                       <td style="padding-left:12px;vertical-align:middle;">
-                        <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Department</div>
+                        <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Cluster / Department</div>
                         <div style="font-size:15px;font-weight:500;color:#202124;">${department} (${cluster})</div>
                       </td>
                     </tr>
                   </table>
-                </td>
-              </tr>
 
-              <!-- What to bring -->
-              <tr>
-                <td style="padding:0 32px 28px;">
-                  <div style="background:#e8f0fe;border-radius:12px;padding:18px 20px;">
-                    <p style="margin:0 0 10px;font-size:14px;font-weight:600;color:#1a73e8;">📋 What's Next?</p>
+                  <!-- Categories applied -->
+                  <div style="background:#e8f0fe;border-radius:12px;padding:16px 20px;margin-top:8px;">
+                    <p style="margin:0 0 10px;font-size:14px;font-weight:600;color:#1a73e8;">📋 Categories Applied For (${categories.length})</p>
                     <ul style="margin:0;padding-left:18px;color:#3c4043;font-size:14px;line-height:1.8;">
-                      <li>Add the event to your calendar</li>
-                      <li>Bring your university ID card</li>
-                      <li>Arrive 10 minutes early</li>
-                      <li>Share with your friends! 🚀</li>
+                      ${catListHtml}
                     </ul>
                   </div>
                 </td>
               </tr>
 
-              <!-- Registered email -->
-              <tr>
-                <td style="padding:0 32px 28px;">
-                  <p style="margin:0;font-size:13px;color:#5f6368;text-align:center;">
-                    This confirmation was sent to <strong>${email}</strong>
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Footer strip -->
+              <!-- Footer -->
               <tr>
                 <td style="height:4px;background:linear-gradient(90deg,#ea4335 25%,#fbbc04 25% 50%,#34a853 50% 75%,#1a73e8 75%);"></td>
               </tr>
               <tr>
                 <td style="padding:16px 32px;text-align:center;">
                   <p style="margin:0;font-size:12px;color:#9aa0a6;">
-                    © ${new Date().getFullYear()} CuSOC, Chandigarh University — See you there! 🎉
+                    © ${new Date().getFullYear()} CuSOC, Chandigarh University
                   </p>
                 </td>
               </tr>
-
             </table>
           </td></tr>
         </table>
@@ -174,24 +131,23 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, event }
 
 /**
  * POST /register
- * Full registration: OTP verified → check seats → insert → increment booked_seats → send confirmation email
+ * Full registration: OTP verified → check seats → insert → send email
  */
 const register = async (req, res) => {
   try {
-    const { 
-        name, email, phone, otp,
-        cluster, department, achievement_level, rank, 
-        competition_name, awards_prize, proof_1_url, proof_2_url 
-    } = req.body;
+    const { name, email, uid, cluster, department, type, categories, otp } = req.body;
 
     // Basic field validation
-    if (!name || !email || !phone || !otp || !cluster || !department || !achievement_level || !rank || !competition_name || !awards_prize) {
+    if (!name || !email || !uid || !cluster || !department || !type || !otp) {
       return res.status(400).json({ error: 'All required fields must be provided' });
+    }
+    if (!Array.isArray(categories) || categories.length === 0) {
+      return res.status(400).json({ error: 'Please select at least one award category' });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Validate university email domain
+    // Validate email domain
     const emailDomain = normalizedEmail.split('@')[1];
     if (!emailDomain || !ALLOWED_DOMAINS.includes(emailDomain)) {
       return res.status(400).json({
@@ -199,13 +155,7 @@ const register = async (req, res) => {
       });
     }
 
-    // Validate phone (10 digits)
-    const phoneDigits = phone.replace(/\D/g, '');
-    if (phoneDigits.length < 10) {
-      return res.status(400).json({ error: 'Invalid phone number' });
-    }
-
-    // ── 1. Verify OTP is valid and not expired ──────────────────────────────
+    // ── 1. Verify OTP ─────────────────────────────────────────────────────────
     const { data: otpData, error: otpError } = await supabase
       .from('otp_verifications')
       .select('*')
@@ -222,7 +172,7 @@ const register = async (req, res) => {
       return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
     }
 
-    // ── 2. Check for duplicate registration ────────────────────────────────
+    // ── 2. Check duplicate ────────────────────────────────────────────────────
     const { data: existingReg } = await supabase
       .from('registrations')
       .select('id')
@@ -230,12 +180,10 @@ const register = async (req, res) => {
       .maybeSingle();
 
     if (existingReg) {
-      return res.status(409).json({
-        error: 'You are already registered for this event with this email',
-      });
+      return res.status(409).json({ error: 'You are already registered for this event' });
     }
 
-    // ── 3. Fetch full event details (needed for seat check + confirmation email) ──
+    // ── 3. Check seats ────────────────────────────────────────────────────────
     const { data: event, error: eventError } = await supabase
       .from('event')
       .select('*')
@@ -243,72 +191,52 @@ const register = async (req, res) => {
 
     if (eventError) throw eventError;
     if (!event) return res.status(404).json({ error: 'Event not found' });
-
     if (event.booked_seats >= event.total_seats) {
       return res.status(409).json({ error: 'Event is full. No seats available.' });
     }
 
-    // ── 4. Insert registration ─────────────────────────────────────────────
+    // ── 4. Insert registration ────────────────────────────────────────────────
     const { error: insertError } = await supabase.from('registrations').insert({
       name: name.trim(),
       email: normalizedEmail,
-      phone: phoneDigits,
+      uid: uid.trim(),
       cluster: cluster.trim(),
       department: department.trim(),
-      achievement_level: achievement_level.trim(),
-      rank: rank.trim(),
-      competition_name: competition_name.trim(),
-      awards_prize: awards_prize.trim(),
-      proof_1_url: proof_1_url || null,
-      proof_2_url: proof_2_url || null,
+      type: type.trim(),
+      categories: categories, // stored as JSONB
     });
 
     if (insertError) {
       if (insertError.code === '23505') {
-        return res.status(409).json({
-          error: 'You are already registered for this event with this email',
-        });
+        return res.status(409).json({ error: 'You are already registered for this event' });
       }
       throw insertError;
     }
 
-    // ── 5. Increment booked_seats — try RPC, fallback to direct UPDATE ─────
-    const { error: rpcError } = await supabase.rpc('increment_booked_seats', {
-      event_id: event.id,
-    });
-
+    // ── 5. Increment booked_seats ─────────────────────────────────────────────
+    const { error: rpcError } = await supabase.rpc('increment_booked_seats', { event_id: event.id });
     if (rpcError) {
-      // RPC function not available — use direct UPDATE as reliable fallback
-      console.warn('RPC increment_booked_seats failed, using direct UPDATE:', rpcError.message);
       const newCount = (event.booked_seats || 0) + 1;
-      const { error: updateErr } = await supabase
-        .from('event')
-        .update({ booked_seats: newCount })
-        .eq('id', event.id);
-      if (updateErr) {
-        console.error('Direct booked_seats increment also failed:', updateErr.message);
-      } else {
-        console.log(`✅ booked_seats incremented → ${newCount} (via direct update)`);
-      }
+      await supabase.from('event').update({ booked_seats: newCount }).eq('id', event.id);
     }
 
-    // ── 6. Clean up used OTP ───────────────────────────────────────────────
+    // ── 6. Clean up OTP ───────────────────────────────────────────────────────
     await supabase.from('otp_verifications').delete().eq('email', normalizedEmail);
 
-    // ── 7. Send confirmation email (non-blocking — don't fail registration if email fails) ──
+    // ── 7. Send confirmation email (non-blocking) ─────────────────────────────
     sendConfirmationEmail({
       name: name.trim(),
       email: normalizedEmail,
       cluster: cluster.trim(),
       department: department.trim(),
+      type,
+      categories,
       event,
-    }).catch((emailErr) => {
-      console.error('Confirmation email failed (non-fatal):', emailErr.message);
-    });
+    }).catch(err => console.error('Confirmation email failed:', err.message));
 
     return res.status(201).json({
       success: true,
-      message: 'Registration successful! See you at the event 🎉',
+      message: 'Application submitted successfully! 🎉',
     });
   } catch (err) {
     console.error('register error:', err.message);

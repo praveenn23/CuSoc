@@ -50,30 +50,24 @@ CREATE TABLE IF NOT EXISTS registrations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  -- one registration per email
-  phone TEXT NOT NULL,
+  uid TEXT,
   cluster TEXT,
   department TEXT,
-  achievement_level TEXT,
-  rank TEXT,
-  competition_name TEXT,
-  awards_prize TEXT,
-  proof_1_url TEXT,
-  proof_2_url TEXT,
+  type TEXT,
+  -- categories stores structured multi-select form data as JSONB array
+  -- e.g. [{"type":"research","data":{...}},{"type":"competitions","data":{...}}]
+  categories JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   ticket_sent_at TIMESTAMPTZ DEFAULT NULL,
   attended_at TIMESTAMPTZ DEFAULT NULL
 );
 
 -- ADD NEW COLUMNS IF TABLE ALREADY EXISTS (Safe for re-runs)
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS uid TEXT;
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS cluster TEXT;
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS department TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS achievement_level TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS rank TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS competition_name TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS awards_prize TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS proof_1_url TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS proof_2_url TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS type TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS categories JSONB DEFAULT '[]'::jsonb;
 
 -- Fast email lookups (duplicate check, OTP match)
 CREATE INDEX IF NOT EXISTS idx_registrations_email ON registrations(email);

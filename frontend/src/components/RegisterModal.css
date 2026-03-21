@@ -1,5 +1,6 @@
 .register-modal {
     position: relative;
+    max-width: 680px !important;
 }
 
 /* ── Header ── */
