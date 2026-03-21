@@ -214,12 +214,7 @@ const register = async (req, res) => {
       return res.status(500).json({ error: `DB insert failed: ${insertError.message} (code: ${insertError.code})` });
     }
 
-    // ── 5. Increment booked_seats ─────────────────────────────────────────────
-    const { error: rpcError } = await supabase.rpc('increment_booked_seats', { event_id: event.id });
-    if (rpcError) {
-      const newCount = (event.booked_seats || 0) + 1;
-      await supabase.from('event').update({ booked_seats: newCount }).eq('id', event.id);
-    }
+    // ── 5. (Removed manual seat increment — handled automatically via DB trigger trg_sync_booked_seats) ────────
 
     // ── 6. Clean up OTP ───────────────────────────────────────────────────────
     await supabase.from('otp_verifications').delete().eq('email', normalizedEmail);

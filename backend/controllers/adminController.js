@@ -77,28 +77,7 @@ const deleteRegistration = async (req, res) => {
 
     if (delErr) throw delErr;
 
-    // ── 3. Decrement booked_seats directly — NO RPC needed ─────────────────
-    // Fetch current count to calculate new value (floor at 0)
-    const { data: eventRow, error: evFetchErr } = await supabase
-      .from('event')
-      .select('id, booked_seats')
-      .maybeSingle();
-
-    if (evFetchErr) {
-      console.error('Could not fetch event for seat decrement:', evFetchErr.message);
-    } else if (eventRow) {
-      const newCount = Math.max(0, (eventRow.booked_seats || 0) - 1);
-      const { error: updateErr } = await supabase
-        .from('event')
-        .update({ booked_seats: newCount })
-        .eq('id', eventRow.id);
-
-      if (updateErr) {
-        console.error('booked_seats decrement error:', updateErr.message);
-      } else {
-        console.log(`✅ booked_seats decremented → ${newCount}`);
-      }
-    }
+    // ── 3. (Removed manual seat decrement — handled automatically via DB trigger trg_sync_booked_seats) ────────
 
     return res.json({ success: true, message: 'Registration deleted successfully' });
   } catch (err) {

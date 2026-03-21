@@ -41,11 +41,6 @@ CREATE TABLE IF NOT EXISTS event (
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Safe column additions for existing tables
-ALTER TABLE event ADD COLUMN IF NOT EXISTS about_text     TEXT;
-ALTER TABLE event ADD COLUMN IF NOT EXISTS event_sections JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE event ADD COLUMN IF NOT EXISTS speakers       JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE event ADD COLUMN IF NOT EXISTS partners       JSONB DEFAULT '[]'::jsonb;
 
 -- Enforce single-row constraint
 CREATE UNIQUE INDEX IF NOT EXISTS event_singleton_idx ON event (singleton);
@@ -73,14 +68,6 @@ CREATE TABLE IF NOT EXISTS registrations (
   department    TEXT,
   type          TEXT,                          -- Student | Mentor | Coordinator
   categories    JSONB       DEFAULT '[]'::jsonb, -- structured multi-category data
-  -- Legacy columns (kept nullable for backward compatibility with existing rows)
-  phone         TEXT,
-  achievement_level TEXT,
-  rank          TEXT,
-  competition_name  TEXT,
-  awards_prize      TEXT,
-  proof_1_url       TEXT,
-  proof_2_url       TEXT,
   -- Timestamps
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   ticket_sent_at TIMESTAMPTZ DEFAULT NULL,
@@ -88,19 +75,9 @@ CREATE TABLE IF NOT EXISTS registrations (
 );
 
 -- Safe column additions for existing registrations table
-ALTER TABLE registrations ALTER COLUMN phone DROP NOT NULL;  -- phone was NOT NULL in old schema
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS uid        TEXT;
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS type       TEXT;
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS categories JSONB DEFAULT '[]'::jsonb;
--- Legacy columns (keep for any existing rows already in the DB)
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS cluster           TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS department         TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS achievement_level  TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS rank               TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS competition_name   TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS awards_prize       TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS proof_1_url        TEXT;
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS proof_2_url        TEXT;
 
 -- Index for fast email lookups (duplicate checks, OTP matching)
 CREATE INDEX IF NOT EXISTS idx_registrations_email ON registrations(email);
@@ -160,19 +137,6 @@ END;
 $$;
 
 
--- ────────────────────────────────────────────────────────────
--- FUNCTION: decrement_booked_seats()
--- Called when admin manually deletes a registration.
--- Floored at 0 to prevent negative counts.
--- ────────────────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION decrement_booked_seats()
-RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  UPDATE event
-  SET booked_seats = GREATEST(booked_seats - 1, 0);
-END;
-$$;
-
 
 -- ────────────────────────────────────────────────────────────
 -- FUNCTION: sync_booked_seats()
@@ -183,7 +147,8 @@ CREATE OR REPLACE FUNCTION sync_booked_seats()
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   UPDATE event
-  SET booked_seats = (SELECT COUNT(*) FROM registrations);
+  SET booked_seats = (SELECT COUNT(*) FROM registrations)
+  WHERE singleton = TRUE;
 END;
 $$;
 
@@ -216,7 +181,8 @@ CREATE OR REPLACE FUNCTION trg_sync_booked_seats()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   UPDATE event
-  SET booked_seats = (SELECT COUNT(*) FROM registrations);
+  SET booked_seats = (SELECT COUNT(*) FROM registrations)
+  WHERE singleton = TRUE;
   RETURN NULL;
 END;
 $$;
@@ -301,25 +267,3 @@ INSERT INTO event (
 -- Run this immediately to correct any mismatch.
 -- ────────────────────────────────────────────────────────────
 SELECT sync_booked_seats();
-
-
--- ────────────────────────────────────────────────────────────
--- USEFUL QUERIES (run manually as needed):
---
--- Check current event status:
---   SELECT title, total_seats, booked_seats FROM event;
---
--- Count registrations:
---   SELECT COUNT(*) FROM registrations;
---
--- View all registrations:
---   SELECT id, name, email, uid, cluster, department, type,
---          jsonb_array_length(categories) AS num_categories,
---          created_at FROM registrations ORDER BY created_at DESC;
---
--- Fix seat count drift manually:
---   SELECT sync_booked_seats();
---
--- Find registration by ticket code:
---   SELECT * FROM find_by_ticket_code('A1B2');
--- ────────────────────────────────────────────────────────────

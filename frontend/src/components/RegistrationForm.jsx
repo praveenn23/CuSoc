@@ -240,11 +240,11 @@ function CompetitionsForm({ data, onChange, errors }) {
                 </Field>
             </div>
             <div className="rf-two-col">
-                <Field label="Prize Money (₹)" error={errors?.prize_money}>
+                <Field label="Prize Money (₹)" required error={errors?.prize_money}>
                     <input type="number" className={`form-input ${errors?.prize_money ? 'error' : ''}`} value={data.prize_money}
                         onChange={e => onChange('prize_money', e.target.value)} placeholder="0" min="0" />
                 </Field>
-                <Field label="Participation Count" error={errors?.participation_count}>
+                <Field label="Participation Count" required error={errors?.participation_count}>
                     <input type="number" className={`form-input ${errors?.participation_count ? 'error' : ''}`} value={data.participation_count}
                         onChange={e => onChange('participation_count', e.target.value)} placeholder="e.g. 150" min="1" />
                 </Field>
@@ -254,12 +254,12 @@ function CompetitionsForm({ data, onChange, errors }) {
                     <Select value={data.role} onChange={e => onChange('role', e.target.value)} error={errors?.role}
                         options={['Team Leader','Member']} placeholder="— Select Role —" />
                 </Field>
-                <Field label="Competition Website" error={errors?.website}>
+                <Field label="Competition Website" required error={errors?.website}>
                     <input type="url" className={`form-input ${errors?.website ? 'error' : ''}`} value={data.website}
                         onChange={e => onChange('website', e.target.value)} placeholder="https://..." />
                 </Field>
             </div>
-            <Field label="Description (max 100 words)" error={errors?.description}>
+            <Field label="Description (max 100 words)" required error={errors?.description}>
                 <textarea className={`form-input rf-textarea ${errors?.description ? 'error' : ''}`} rows={3} value={data.description}
                     onChange={e => onChange('description', e.target.value)} placeholder="Brief description of your achievement..." />
             </Field>
@@ -269,13 +269,13 @@ function CompetitionsForm({ data, onChange, errors }) {
                         onChange={e => onChange('certificate', e.target.files[0] || null)}
                         label="Upload Certificate" error={errors?.certificate} />
                 </Field>
-                <Field label="Medal / Award Photo" error={errors?.medal_photo}>
+                <Field label="Medal / Award Photo" required error={errors?.medal_photo}>
                     <FileInput id="comp-medal" accept="image/*" file={data.medal_photo}
                         onChange={e => onChange('medal_photo', e.target.files[0] || null)}
                         label="Upload Medal Photo" error={errors?.medal_photo} />
                 </Field>
             </div>
-            <Field label="HD Photo" error={errors?.hd_photo}>
+            <Field label="HD Photo" required error={errors?.hd_photo}>
                 <FileInput id="comp-hd" accept="image/*" file={data.hd_photo}
                     onChange={e => onChange('hd_photo', e.target.files[0] || null)}
                     label="Upload HD Photo" error={errors?.hd_photo} />
@@ -432,8 +432,14 @@ function validateCategory(id, data) {
         if (!data.event_date) e.event_date = 'Event date is required';
         if (!data.org_body) e.org_body = 'Organizing body is required';
         if (!data.org_name.trim()) e.org_name = 'Organization name is required';
+        if (!data.prize_money) e.prize_money = 'Prize money is required';
+        if (!data.participation_count) e.participation_count = 'Participation count is required';
         if (!data.role) e.role = 'Role is required';
+        if (!data.website.trim()) e.website = 'Competition website is required';
+        if (!data.description.trim()) e.description = 'Description is required';
         if (!data.certificate) e.certificate = 'Certificate upload is required';
+        if (!data.medal_photo) e.medal_photo = 'Medal photo upload is required';
+        if (!data.hd_photo) e.hd_photo = 'HD photo upload is required';
     }
     if (id === 'patents') {
         if (!data.patent_title.trim()) e.patent_title = 'Patent title is required';
