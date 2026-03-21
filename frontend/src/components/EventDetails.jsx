@@ -1,6 +1,6 @@
 import { Calendar, Clock, MapPin } from 'lucide-react';
 import SeatCounter from './SeatCounter';
-import bannerImg from '../assets/Poster/CUSOC.png';
+import bannerImg from '../assets/Poster/292b2e.png';
 import './EventDetails.css';
 
 function formatDate(dateStr) {
