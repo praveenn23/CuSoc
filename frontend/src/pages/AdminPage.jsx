@@ -88,6 +88,69 @@ function SendTicketsModal({ totalCount, onConfirm, onCancel, loading }) {
     );
 }
 
+// ── View Details Modal ──
+function ViewDetailsModal({ registration, onCancel }) {
+    if (!registration) return null;
+
+    return (
+        <div className="modal-overlay" onClick={onCancel} role="dialog" aria-modal="true">
+            <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 650, width: '90%', maxHeight: '85vh', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h3 style={{ margin: 0 }}>Registration Details</h3>
+                    <button className="btn btn-secondary btn-sm" onClick={onCancel} style={{ padding: '4px 8px' }}><X size={16} /></button>
+                </div>
+                
+                <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: 8, marginBottom: 16 }}>
+                    <div style={{ fontWeight: 600, fontSize: 16 }}>{registration.name}</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
+                        {registration.email} &bull; {registration.uid} &bull; {registration.type}
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
+                        {registration.department} {registration.cluster ? `(${registration.cluster})` : ''}
+                    </div>
+                </div>
+
+                <h4 style={{ margin: '0 0 12px 0', borderBottom: '1px solid #eee', paddingBottom: 8 }}>Applied Categories</h4>
+                
+                {(!registration.categories || registration.categories.length === 0) ? (
+                    <p className="text-muted" style={{ fontSize: 14 }}>No specific category data submitted.</p>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {registration.categories.map((cat, i) => (
+                            <div key={i} style={{ border: '1px solid #e0e0e0', borderRadius: 8, overflow: 'hidden' }}>
+                                <div style={{ background: '#f1f3f4', padding: '8px 12px', fontWeight: 600, borderBottom: '1px solid #e0e0e0', textTransform: 'capitalize' }}>
+                                    {cat.type}
+                                </div>
+                                <div style={{ padding: '12px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
+                                    {Object.entries(cat.data || {}).map(([key, val]) => {
+                                        // Format key nicely, e.g. "comp_name" -> "Comp Name"
+                                        const niceKey = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                                        const isUrl = typeof val === 'string' && val.startsWith('http');
+                                        return (
+                                            <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{niceKey}</span>
+                                                {isUrl ? (
+                                                    <a href={val} target="_blank" rel="noopener noreferrer" style={{ color: '#1a73e8', textDecoration: 'none', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
+                                                        <Link size={12} /> View Uploaded File
+                                                    </a>
+                                                ) : (
+                                                    <span style={{ fontSize: 14, color: 'var(--text-primary)', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                                                        {typeof val === 'boolean' ? (val ? 'Yes' : 'No') : (val || '-')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 // ── Blank speaker / partner / section templates ──────────────────────────────
 const BLANK_SPEAKER = { id: Date.now(), name: '', role: '', bio: '', linkedin: '', color: '#1a73e8', initials: '' };
 const BLANK_PARTNER = { id: Date.now(), name: '', logo_url: '' };
@@ -588,6 +651,8 @@ export default function AdminPage({ onLogout }) {
     const [deleteTarget, setDeleteTarget] = useState(null); // { id, name, email }
     const [deleting, setDeleting] = useState(false);
     const [deleteMsg, setDeleteMsg] = useState('');
+    
+    const [viewTarget, setViewTarget] = useState(null); // the full registration object to view
 
     const [showSendTicketsModal, setShowSendTicketsModal] = useState(false);
     const [sendingTickets, setSendingTickets] = useState(false);
@@ -1017,14 +1082,24 @@ export default function AdminPage({ onLogout }) {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <button
-                                                        className="btn btn-danger btn-sm admin-delete-btn"
-                                                        onClick={() => setDeleteTarget({ id: r.id, name: r.name, email: r.email })}
-                                                        title={`Delete ${r.name}`}
-                                                        id={`btn-delete-${r.id}`}
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                        <button
+                                                            className="btn btn-secondary btn-sm"
+                                                            onClick={() => setViewTarget(r)}
+                                                            title={`View details for ${r.name}`}
+                                                            style={{ padding: '0 8px' }}
+                                                        >
+                                                            <AlignLeft size={14} /> View
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-danger btn-sm admin-delete-btn"
+                                                            onClick={() => setDeleteTarget({ id: r.id, name: r.name, email: r.email })}
+                                                            title={`Delete ${r.name}`}
+                                                            id={`btn-delete-${r.id}`}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -1238,6 +1313,13 @@ export default function AdminPage({ onLogout }) {
                     onConfirm={handleDelete}
                     onCancel={() => setDeleteTarget(null)}
                     loading={deleting}
+                />
+            )}
+
+            {viewTarget && (
+                <ViewDetailsModal 
+                    registration={viewTarget}
+                    onCancel={() => setViewTarget(null)}
                 />
             )}
 
