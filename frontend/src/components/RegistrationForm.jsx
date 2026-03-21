@@ -33,6 +33,7 @@ const AWARD_CATEGORIES = [
     { id: 'competitions',    label: 'Competitions & Hackathons',   emoji: '🏆' },
     { id: 'patents',         label: 'Patents',                     emoji: '📜' },
     { id: 'certifications',  label: 'Certifications / Leadership', emoji: '🎓' },
+    { id: 'other',           label: 'Other Category',              emoji: '✨' },
 ];
 
 const TYPES = ['Student', 'Mentor', 'Coordinator'];
@@ -44,6 +45,7 @@ const blankEntrepreneurship = () => ({ startup_name: '', reg_status: '', reg_num
 const blankCompetitions = () => ({ comp_name: '', level: '', rank: '', event_date: '', org_body: '', org_name: '', prize_money: '', participation_count: '', role: '', description: '', website: '', certificate: null, medal_photo: null, hd_photo: null });
 const blankPatents = () => ({ patent_title: '', app_number: '', status: 'Granted', grant_date: '', patent_office: '', applicant_role: '', patent_doc: null, filing_receipt: null });
 const blankCertifications = () => ({ club_name: '', tenure: '', impact: '', members_converted: '', testimonials: null, achievements: '', awareness_sessions: '', mentored: false, mentor_comp_name: '' });
+const blankOther = () => ({ category_type: '', award_name: '', proof: null });
 
 const CATEGORY_BLANK = {
     research: blankResearch,
@@ -52,6 +54,7 @@ const CATEGORY_BLANK = {
     competitions: blankCompetitions,
     patents: blankPatents,
     certifications: blankCertifications,
+    other: blankOther,
 };
 
 // ── File Upload Helper ─────────────────────────────────────────────────────────
@@ -384,6 +387,29 @@ function CertificationsForm({ data, onChange, errors }) {
     );
 }
 
+function OtherForm({ data, onChange, errors }) {
+    return (
+        <div className="rf-cat-fields">
+            <Field label="Option Type" required error={errors?.category_type}>
+                <Select value={data.category_type} onChange={e => onChange('category_type', e.target.value)} error={errors?.category_type}
+                    options={['Government exam', 'Professional society award']}
+                    placeholder="— Select Option —"
+                />
+            </Field>
+            <Field label="Name of award or exam clear" required error={errors?.award_name}>
+                <input className={`form-input ${errors?.award_name ? 'error' : ''}`} value={data.award_name}
+                    onChange={e => onChange('award_name', e.target.value)} placeholder="e.g. GATE 2024 or IEEE Outstanding Student Award" />
+            </Field>
+            <Field label="Upload the proof" required error={errors?.proof}>
+                <FileInput id="other-proof" accept="application/pdf,image/*" file={data.proof}
+                    onChange={e => onChange('proof', e.target.files[0] || null)}
+                    label="Upload the proof (PDF/Image)" error={errors?.proof}
+                />
+            </Field>
+        </div>
+    );
+}
+
 const CATEGORY_FORMS = {
     research: ResearchForm,
     innovation: InnovationForm,
@@ -391,6 +417,7 @@ const CATEGORY_FORMS = {
     competitions: CompetitionsForm,
     patents: PatentsForm,
     certifications: CertificationsForm,
+    other: OtherForm,
 };
 
 // ── Validation helpers ─────────────────────────────────────────────────────────
@@ -455,6 +482,11 @@ function validateCategory(id, data) {
         if (!data.tenure.trim()) e.tenure = 'Tenure is required';
         if (!data.impact.trim()) e.impact = 'Leadership impact is required';
     }
+    if (id === 'other') {
+        if (!data.category_type) e.category_type = 'Option type is required';
+        if (!data.award_name.trim()) e.award_name = 'Name of award or exam is required';
+        if (!data.proof) e.proof = 'Proof document is required';
+    }
     return e;
 }
 
@@ -468,6 +500,7 @@ async function processCategoryData(id, data) {
         competitions: ['certificate', 'medal_photo', 'hd_photo'],
         patents: ['patent_doc', 'filing_receipt'],
         certifications: ['testimonials'],
+        other: ['proof'],
     };
     for (const field of (fileFields[id] || [])) {
         if (d[field] instanceof File) {
