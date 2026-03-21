@@ -839,9 +839,8 @@ export default function AdminPage({ onLogout }) {
                 <div className="admin-topbar">
                     <div className="admin-topbar-brand">
                         <span className="admin-logo-text">
-                            <span style={{ color: '#ea4335' }}>C</span><span style={{ color: '#fbbc04' }}>u</span>
-                            <span style={{ color: '#34a853' }}>S</span><span style={{ color: '#ea4335' }}>O</span>
-                            <span style={{ color: '#fbbc04' }}>C</span>
+                            <span style={{ color: '#292b2e' }}>O</span><span style={{ color: '#ea4335' }}>A</span>
+                            <span style={{ color: '#ea4335' }}>A</span>
                         </span>
                         <span className="admin-topbar-label">Admin Panel</span>
                     </div>
