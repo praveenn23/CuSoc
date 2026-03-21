@@ -674,12 +674,14 @@ export default function AdminPage({ onLogout }) {
     const filtered = regs
         .filter((r) => {
             const q = search.toLowerCase();
+            const textMatch = (
                 r.name.toLowerCase().includes(q) ||
                 r.email.toLowerCase().includes(q) ||
                 (r.uid || '').toLowerCase().includes(q) ||
                 (r.department || '').toLowerCase().includes(q) ||
                 (r.type || '').toLowerCase().includes(q) ||
                 (r.cluster || '').toLowerCase().includes(q)
+            );
             const attendMatch =
                 attendFilter === 'all' ? true :
                     attendFilter === 'present' ? !!r.attended_at :
