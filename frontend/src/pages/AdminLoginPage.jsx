@@ -95,7 +95,7 @@ export default function AdminLoginPage({ onLogin }) {
                 </div>
 
                 <p className="admin-login-footer">
-                    © {new Date().getFullYear()} CuSOC — Chandigarh University
+                    © {new Date().getFullYear()} Chandigarh University
                 </p>
             </div>
         </div>

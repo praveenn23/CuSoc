@@ -28,7 +28,7 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, type, c
   ).join('');
 
   await transporter.sendMail({
-    from: `"CuSOC Events" <${process.env.EMAIL_FROM}>`,
+    from: `"ABHYUTTHANAM: Achievers Awards" <${process.env.EMAIL_FROM}>`,
     to: email,
     subject: `✅ Application Received — ${event.title}`,
     html: `
@@ -116,7 +116,7 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, type, c
               <tr>
                 <td style="padding:16px 32px;text-align:center;">
                   <p style="margin:0;font-size:12px;color:#9aa0a6;">
-                    © ${new Date().getFullYear()} CuSOC, Chandigarh University
+                    © ${new Date().getFullYear()} ABHYUTTHANAM: Achievers Awards, Chandigarh University
                   </p>
                 </td>
               </tr>
