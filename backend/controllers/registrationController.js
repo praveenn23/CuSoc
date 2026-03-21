@@ -210,7 +210,8 @@ const register = async (req, res) => {
       if (insertError.code === '23505') {
         return res.status(409).json({ error: 'You are already registered for this event' });
       }
-      throw insertError;
+      console.error('Insert error:', insertError);
+      return res.status(500).json({ error: `DB insert failed: ${insertError.message} (code: ${insertError.code})` });
     }
 
     // ── 5. Increment booked_seats ─────────────────────────────────────────────
