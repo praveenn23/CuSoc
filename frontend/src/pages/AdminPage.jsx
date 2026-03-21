@@ -674,13 +674,12 @@ export default function AdminPage({ onLogout }) {
     const filtered = regs
         .filter((r) => {
             const q = search.toLowerCase();
-            const textMatch = (
                 r.name.toLowerCase().includes(q) ||
                 r.email.toLowerCase().includes(q) ||
-                (r.phone || '').includes(q) ||
+                (r.uid || '').toLowerCase().includes(q) ||
                 (r.department || '').toLowerCase().includes(q) ||
+                (r.type || '').toLowerCase().includes(q) ||
                 (r.cluster || '').toLowerCase().includes(q)
-            );
             const attendMatch =
                 attendFilter === 'all' ? true :
                     attendFilter === 'present' ? !!r.attended_at :
@@ -940,11 +939,16 @@ export default function AdminPage({ onLogout }) {
                                             <th onClick={() => toggleSort('email')} className="sortable">
                                                 Email <SortIcon col="email" />
                                             </th>
-                                            <th>Phone</th>
+                                            <th onClick={() => toggleSort('uid')} className="sortable">
+                                                UID / EID <SortIcon col="uid" />
+                                            </th>
+                                            <th>Type</th>
                                             <th>Department & Cluster</th>
+                                            <th>Categories Applied</th>
                                             <th onClick={() => toggleSort('created_at')} className="sortable">
                                                 Registered At <SortIcon col="created_at" />
                                             </th>
+                                            <th>Ticket Sent</th>
                                             <th>Attendance</th>
                                             <th className="admin-th-action">Action</th>
                                         </tr>
@@ -960,12 +964,44 @@ export default function AdminPage({ onLogout }) {
                                                     <span>{r.name}</span>
                                                 </td>
                                                 <td className="admin-td-email">{r.email}</td>
-                                                <td>{r.phone}</td>
+                                                <td>{r.uid || <span className="text-muted">—</span>}</td>
+                                                <td>
+                                                    {r.type ? (
+                                                        <span style={{
+                                                            fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px',
+                                                            background: r.type === 'Student' ? '#e8f0fe' : (r.type === 'Mentor' ? '#fce8e6' : '#e6f4ea'),
+                                                            color: r.type === 'Student' ? '#1a73e8' : (r.type === 'Mentor' ? '#d93025' : '#137333')
+                                                        }}>{r.type}</span>
+                                                    ) : <span className="text-muted">—</span>}
+                                                </td>
                                                 <td>
                                                     {r.department || <span className="admin-td-empty">—</span>}
                                                     {r.cluster && <><br /><small className="text-muted">{r.cluster}</small></>}
                                                 </td>
+                                                <td>
+                                                    {Array.isArray(r.categories) && r.categories.length > 0 ? (
+                                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', maxWidth: '180px' }}>
+                                                            {r.categories.map((cat, idx) => (
+                                                                <span key={idx} style={{
+                                                                    padding: '2px 6px', background: '#f1f3f4', color: '#3c4043',
+                                                                    border: '1px solid #dadce0', borderRadius: '4px', fontSize: '11px', whiteSpace: 'nowrap'
+                                                                }}>
+                                                                    {(cat.type || '').charAt(0).toUpperCase() + (cat.type || '').slice(1)}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted">—</span>
+                                                    )}
+                                                </td>
                                                 <td className="admin-td-date">{formatDate(r.created_at)}</td>
+                                                <td>
+                                                    {r.ticket_sent_at ? (
+                                                        <span className="text-success" title={formatDate(r.ticket_sent_at)}>✅ Yes</span>
+                                                    ) : (
+                                                        <span className="text-muted">❌ No</span>
+                                                    )}
+                                                </td>
                                                 <td>
                                                     {r.attended_at ? (
                                                         <div className="attend-badge attend-badge-present">
