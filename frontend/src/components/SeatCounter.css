@@ -103,6 +103,22 @@
     font-size: 15px;
 }
 
+.seat-action {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.seat-warn-micro {
+    font-size: 13px;
+    font-weight: 500;
+    color: #b06e00;
+    text-align: center;
+    margin: 0;
+    animation: fadeIn 0.4s ease;
+}
+
 .seat-full-msg,
 .seat-warn-msg {
     display: flex;

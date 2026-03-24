@@ -1,7 +1,7 @@
 import { Users } from 'lucide-react';
 import './SeatCounter.css';
 
-export default function SeatCounter({ totalSeats, bookedSeats }) {
+export default function SeatCounter({ totalSeats, bookedSeats, onRegister }) {
     const remaining = Math.max(0, totalSeats - bookedSeats);
     const percent = totalSeats > 0 ? (bookedSeats / totalSeats) * 100 : 0;
     const isFull = remaining === 0;
@@ -11,20 +11,13 @@ export default function SeatCounter({ totalSeats, bookedSeats }) {
     let statusText = `${remaining} seats left`;
     let barClass = 'bar-good';
 
-    if (isFull) {
-        statusClass = 'seat-status-full';
-        statusText = 'Event Full';
-        barClass = 'bar-full';
-    } else if (isAlmostFull) {
-        statusClass = 'seat-status-warn';
-        barClass = 'bar-warn';
-    }
-
     return (
         <div className="seat-counter card" aria-label="Seat availability">
             <div className="seat-counter-header">
-                <span className="seat-icon"><Users size={20} /></span>
-                <span className="seat-title">Available Seats</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                    <span className="seat-icon"><Users size={20} /></span>
+                    <span className="seat-title">Available Seats</span>
+                </div>
                 <span className={`chip ${statusClass}`}>{statusText}</span>
             </div>
 
@@ -48,14 +41,20 @@ export default function SeatCounter({ totalSeats, bookedSeats }) {
                 </span>
             </div>
 
+            {!isFull && onRegister && (
+                <div className="seat-action">
+                    <button className="btn btn-primary btn-full" onClick={onRegister} id="btn-seat-register">
+                        Register Now
+                    </button>
+                    {isAlmostFull && (
+                        <p className="seat-warn-micro">⚡ Hurry! Only {remaining} seats left.</p>
+                    )}
+                </div>
+            )}
+
             {isFull && (
                 <div className="seat-full-msg">
                     <span>🚫</span> Registrations are closed. All seats are filled.
-                </div>
-            )}
-            {isAlmostFull && (
-                <div className="seat-warn-msg">
-                    <span>⚡</span> Hurry! Only {remaining} seats remaining.
                 </div>
             )}
         </div>

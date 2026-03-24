@@ -8,7 +8,7 @@ import './RegistrationForm.css';
 const CLUSTERS = ['Engineering', 'Management', 'Liberal Arts and Humanities', 'Science'];
 
 const DEPARTMENTS = [
-    'CDOE','Pro VC Academic Affairs','Chemistry','Mathematics','Physics','Bio-Technology',
+    'Chemistry','Mathematics','Physics','Bio-Technology',
     'Bio-Sciences','Agriculture','Computer Science & Engineering 2nd Year',
     'Computer Science & Engineering 3rd Year','Computer Science & Engineering 4th Year',
     'Engineering Foundation 1st Year (Batch 5)','Engineering Foundation 1st Year (Batch 2)',
@@ -22,29 +22,43 @@ const DEPARTMENTS = [
     'UITTR','UIPES','Interior Design','Industrial Design','Fine Arts','Fashion & Design',
     'UILAH','Architecture','Animation, VFX & Gaming','Psychology','Film Studies','UIMS',
     'TTM','HHM','Airlines','BA-LLB','BBA-LLB','B.COM-LLB','LLB-LLM','Commerce','BBA',
-    'MBA','AIT — MBA','Global School of Finance & Accounting','Economics','DCPD',
-    'AIT — CSE (AIML)','ME — CSE','English','BBA APEX','Animation, VFX & Gaming (UIFVA)','DSW',
+    'MBA','AIT — MBA','Global School of Finance & Accounting','Economics',
+    'AIT — CSE (AIML)','ME — CSE','English','BBA APEX','Animation, VFX & Gaming (UIFVA)',
+];
+
+const CLUBS = [
+    'ASTRONOMY CLUB', 'DROIDLINX CLUB', 'FINVERSE CLUB', 'MARKETING BRIGADE CLUB',
+    'SCI-FI INNOVATION CLUB', 'FPF CLUB', 'TOURISM CLUB', 'AEROX CLUB',
+    'TECH TATVA CLUB', 'C SQUARE CLUB', 'AI FOR EVERYONE CLUB', 'ARVR CLUB',
+    'ASCENTIA CLUB', 'SOCRATIC-CIRCLE CLUB', 'EVENT CREW CLUB', 'CYSECSPHERE CLUB',
+    'ARTIFICIAL-INTELLIGENCE CLUB', 'ROBOX CLUB', 'ECO GENESIS CLUB',
+    'GAME DEVELOPMENT CLUB', 'PLAYNATION CLUB', 'DEFENCE CLUB', 'BLOCKCHAIN CLUB',
+    'THE VOYAGE CLUB', 'IGNITE YOUTH CLUB', 'YOUNG ORATORS CLUB',
+    'CAMPUS-TO-CORPORATE CLUB', 'ENTREPRENEURSHIP CLUB', 'RAMANUJAN CLUB',
+    'PROTOSTART CLUB', 'KALACONNECT CLUB', 'XCELLENCE CLUB', 'ASTRONAUTICS CLUB',
+    'CLOUDSTACK CLUB', 'BIZLYTICS CLUB'
 ];
 
 const AWARD_CATEGORIES = [
     { id: 'research',        label: 'Research Award',              emoji: '🔬' },
-    { id: 'innovation',      label: 'New Innovators',              emoji: '💡' },
+    { id: 'innovation',      label: 'Global Certified',            emoji: '🎖️' },
     { id: 'entrepreneurship',label: 'Entrepreneurship',            emoji: '🚀' },
     { id: 'competitions',    label: 'Competitions & Hackathons',   emoji: '🏆' },
     { id: 'patents',         label: 'Patents',                     emoji: '📜' },
-    { id: 'certifications',  label: 'Certifications / Leadership', emoji: '🎓' },
+    { id: 'certifications',  label: 'Leadership',                  emoji: '🎓' },
     { id: 'other',           label: 'Other Category',              emoji: '✨' },
 ];
 
-const TYPES = ['Student', 'Mentor', 'Coordinator'];
+const TYPES = ['Student', 'Mentor'];
+// , 'Coordinator'
 
 // ── Blank state factories ──────────────────────────────────────────────────────
-const blankResearch = () => ({ project_type: '', funding_letter: null });
-const blankInnovation = () => ({ project_title: '', description: '', only_granted: false, patent_grant: null, innovator_cert: null });
+const blankResearch = () => ({ project_type: '', research_name: '', level: '', fund_amount: '', org_name: '', funding_letter: null });
+const blankInnovation = () => ({ cert_title: '', description: '', cert_file: null });
 const blankEntrepreneurship = () => ({ startup_name: '', reg_status: '', reg_number: '', trl_stage: '', not_incubated: false, reg_cert: null, pitch_deck: null, proof: null });
 const blankCompetitions = () => ({ comp_name: '', level: '', rank: '', event_date: '', org_body: '', org_name: '', prize_money: '', participation_count: '', role: '', description: '', website: '', certificate: null, medal_photo: null, hd_photo: null });
 const blankPatents = () => ({ patent_title: '', app_number: '', status: 'Granted', grant_date: '', patent_office: '', applicant_role: '', patent_doc: null, filing_receipt: null });
-const blankCertifications = () => ({ club_name: '', tenure: '', impact: '', members_converted: '', testimonials: null, achievements: '', awareness_sessions: '', mentored: false, mentor_comp_name: '' });
+const blankCertifications = () => ({ club_name: '', position: '', tenure: '2025-26', members_converted: '', awareness_sessions: '', achievements: '', recommendation_letter: null, mentored: false, mentored_team_name: '', mentored_comp_name: '' });
 const blankOther = () => ({ category_type: '', award_name: '', proof: null });
 
 const CATEGORY_BLANK = {
@@ -120,7 +134,27 @@ function ResearchForm({ data, onChange, errors }) {
                     placeholder="— Select Project Type —"
                 />
             </Field>
-            <Field label="Funding Approval Letter" required error={errors?.funding_letter}>
+            <div className="rf-two-col">
+                <Field label="Research Name" required error={errors?.research_name}>
+                    <input className={`form-input ${errors?.research_name ? 'error' : ''}`} value={data.research_name}
+                        onChange={e => onChange('research_name', e.target.value)} placeholder="Title of your research" />
+                </Field>
+                <Field label="Level" required error={errors?.level}>
+                    <Select value={data.level} onChange={e => onChange('level', e.target.value)} error={errors?.level}
+                        options={['National','International','College','State','Industry']} placeholder="— Select Level —" />
+                </Field>
+            </div>
+            <div className="rf-two-col">
+                <Field label="Fund received in amount" required error={errors?.fund_amount}>
+                    <input type="number" className={`form-input ${errors?.fund_amount ? 'error' : ''}`} value={data.fund_amount}
+                        onChange={e => onChange('fund_amount', e.target.value)} placeholder="Amount in ₹" min="0" />
+                </Field>
+                <Field label="Name of Organization" required error={errors?.org_name}>
+                    <input className={`form-input ${errors?.org_name ? 'error' : ''}`} value={data.org_name}
+                        onChange={e => onChange('org_name', e.target.value)} placeholder="e.g. DST, IEEE, etc." />
+                </Field>
+            </div>
+            <Field label="Funding Approval Letter by Organization" required error={errors?.funding_letter}>
                 <FileInput id="research-funding" accept="application/pdf,image/*" file={data.funding_letter}
                     onChange={e => onChange('funding_letter', e.target.files[0] || null)}
                     label="Upload Funding Approval Letter (PDF/Image)" error={errors?.funding_letter}
@@ -133,28 +167,22 @@ function ResearchForm({ data, onChange, errors }) {
 function InnovationForm({ data, onChange, errors }) {
     return (
         <div className="rf-cat-fields">
-            <Field label="Project Title" required error={errors?.project_title}>
-                <input className={`form-input ${errors?.project_title ? 'error' : ''}`} value={data.project_title}
-                    onChange={e => onChange('project_title', e.target.value)} placeholder="e.g. Smart Water Monitoring System" />
-            </Field>
-            <Field label="Innovation Description" required error={errors?.description}>
-                <textarea className={`form-input rf-textarea ${errors?.description ? 'error' : ''}`} rows={3} value={data.description}
-                    onChange={e => onChange('description', e.target.value)} placeholder="Describe your innovation..." />
-            </Field>
-            <div className="rf-checkbox-row">
-                <input type="checkbox" id="only-granted" checked={data.only_granted}
-                    onChange={e => onChange('only_granted', e.target.checked)} />
-                <label htmlFor="only-granted">Only Granted Patents</label>
+            <div className="rf-form-note rf-note-blue">
+                <span className="rf-note-icon"><AlertCircle size={18} /></span>
+                <span>No LinkedIn or Coursera certificates will be allowed for this category.</span>
             </div>
-            <Field label="Patent Grant" required error={errors?.patent_grant}>
-                <FileInput id="patent-grant" accept="application/pdf,image/*" file={data.patent_grant}
-                    onChange={e => onChange('patent_grant', e.target.files[0] || null)}
-                    label="Upload Patent Grant Document" error={errors?.patent_grant} />
+            <Field label="Certification Title" required error={errors?.cert_title}>
+                <input className={`form-input ${errors?.cert_title ? 'error' : ''}`} value={data.cert_title}
+                    onChange={e => onChange('cert_title', e.target.value)} placeholder="e.g. AWS Certified Solutions Architect" />
             </Field>
-            <Field label="Best Innovator Certificate" required error={errors?.innovator_cert}>
-                <FileInput id="innovator-cert" accept="application/pdf,image/*" file={data.innovator_cert}
-                    onChange={e => onChange('innovator_cert', e.target.files[0] || null)}
-                    label="Upload Best Innovator Certificate" error={errors?.innovator_cert} />
+            <Field label="Certification Description (max 50 words)" required error={errors?.description}>
+                <textarea className={`form-input rf-textarea ${errors?.description ? 'error' : ''}`} rows={3} value={data.description}
+                    onChange={e => onChange('description', e.target.value)} placeholder="Briefly describe the significance of this certification..." />
+            </Field>
+            <Field label="Upload Global Certified Certificate" required error={errors?.cert_file}>
+                <FileInput id="global-cert" accept="application/pdf,image/*" file={data.cert_file}
+                    onChange={e => onChange('cert_file', e.target.files[0] || null)}
+                    label="Upload Global Certified Certificate" error={errors?.cert_file} />
             </Field>
         </div>
     );
@@ -212,6 +240,10 @@ function EntrepreneurshipForm({ data, onChange, errors }) {
 function CompetitionsForm({ data, onChange, errors }) {
     return (
         <div className="rf-cat-fields">
+            <div className="rf-form-note rf-note-blue">
+                <span className="rf-note-icon">ℹ️</span>
+                All national international state professional society startup related competitions and hackathon information has to be submitted only here
+            </div>
             <div className="rf-two-col">
                 <Field label="Competition Name" required error={errors?.comp_name}>
                     <input className={`form-input ${errors?.comp_name ? 'error' : ''}`} value={data.comp_name}
@@ -247,7 +279,7 @@ function CompetitionsForm({ data, onChange, errors }) {
                     <input type="number" className={`form-input ${errors?.prize_money ? 'error' : ''}`} value={data.prize_money}
                         onChange={e => onChange('prize_money', e.target.value)} placeholder="0" min="0" />
                 </Field>
-                <Field label="Participation Count" required error={errors?.participation_count}>
+                <Field label="Participation count in the complete event" required error={errors?.participation_count}>
                     <input type="number" className={`form-input ${errors?.participation_count ? 'error' : ''}`} value={data.participation_count}
                         onChange={e => onChange('participation_count', e.target.value)} placeholder="e.g. 150" min="1" />
                 </Field>
@@ -340,19 +372,22 @@ function CertificationsForm({ data, onChange, errors }) {
     return (
         <div className="rf-cat-fields">
             <div className="rf-two-col">
-                <Field label="Club Name / Coordinator Dept." required error={errors?.club_name}>
-                    <input className={`form-input ${errors?.club_name ? 'error' : ''}`} value={data.club_name}
-                        onChange={e => onChange('club_name', e.target.value)} placeholder="e.g. IEEE Student Branch" />
+                <Field label="Club Name" required error={errors?.club_name}>
+                    <Select value={data.club_name} onChange={e => onChange('club_name', e.target.value)}
+                        error={errors?.club_name} options={CLUBS} placeholder="— Select Club —" />
                 </Field>
-                <Field label="Tenure" required error={errors?.tenure}>
-                    <input className={`form-input ${errors?.tenure ? 'error' : ''}`} value={data.tenure}
-                        onChange={e => onChange('tenure', e.target.value)} placeholder="e.g. 2023-2024" />
+                <Field label="Position" required error={errors?.position}>
+                    <Select value={data.position} onChange={e => onChange('position', e.target.value)}
+                        error={errors?.position} options={['Secretary', 'Jt. Secretary', 'Core Member']} placeholder="— Select Position —" />
                 </Field>
             </div>
-            <Field label="Leadership Impact" required error={errors?.impact}>
-                <textarea className={`form-input rf-textarea ${errors?.impact ? 'error' : ''}`} rows={3} value={data.impact}
-                    onChange={e => onChange('impact', e.target.value)} placeholder="Describe your leadership impact..." />
-            </Field>
+            <div className="rf-two-col">
+                <Field label="Tenure">
+                    <input className="form-input" value={data.tenure} readOnly
+                        style={{ background: 'var(--bg)', cursor: 'not-allowed', color: 'var(--text-secondary)' }} />
+                </Field>
+                <div /> {/* spacing */}
+            </div>
             <div className="rf-two-col">
                 <Field label="Members Converted to Core" error={errors?.members_converted}>
                     <input type="number" className={`form-input ${errors?.members_converted ? 'error' : ''}`} value={data.members_converted}
@@ -367,10 +402,10 @@ function CertificationsForm({ data, onChange, errors }) {
                 <input className={`form-input ${errors?.achievements ? 'error' : ''}`} value={data.achievements}
                     onChange={e => onChange('achievements', e.target.value)} placeholder="Key achievements..." />
             </Field>
-            <Field label="Testimonials Proof (20 members)" error={errors?.testimonials}>
-                <FileInput id="testimonials" accept="application/pdf,image/*,.zip" file={data.testimonials}
-                    onChange={e => onChange('testimonials', e.target.files[0] || null)}
-                    label="Upload Testimonials Proof" error={errors?.testimonials} />
+            <Field label="Recommendation Letter from Faculty Advisor" required error={errors?.recommendation_letter}>
+                <FileInput id="recommendation_letter" accept="application/pdf,image/*" file={data.recommendation_letter}
+                    onChange={e => onChange('recommendation_letter', e.target.files[0] || null)}
+                    label="Upload Recommendation Letter" error={errors?.recommendation_letter} />
             </Field>
             <div className="rf-checkbox-row">
                 <input type="checkbox" id="mentored" checked={data.mentored}
@@ -378,10 +413,16 @@ function CertificationsForm({ data, onChange, errors }) {
                 <label htmlFor="mentored">Mentored Students for Competitions</label>
             </div>
             {data.mentored && (
-                <Field label="Competition Name (Mentored For)" error={errors?.mentor_comp_name}>
-                    <input className={`form-input ${errors?.mentor_comp_name ? 'error' : ''}`} value={data.mentor_comp_name}
-                        onChange={e => onChange('mentor_comp_name', e.target.value)} placeholder="e.g. Smart India Hackathon" />
-                </Field>
+                <div className="rf-two-col">
+                    <Field label="Team Name (Mentored For)" error={errors?.mentored_team_name}>
+                        <input className={`form-input ${errors?.mentored_team_name ? 'error' : ''}`} value={data.mentored_team_name}
+                            onChange={e => onChange('mentored_team_name', e.target.value)} placeholder="e.g. Team Gekko" />
+                    </Field>
+                    <Field label="Competition Name" error={errors?.mentored_comp_name}>
+                        <input className={`form-input ${errors?.mentored_comp_name ? 'error' : ''}`} value={data.mentored_comp_name}
+                            onChange={e => onChange('mentored_comp_name', e.target.value)} placeholder="e.g. Smart India Hackathon" />
+                    </Field>
+                </div>
             )}
         </div>
     );
@@ -436,13 +477,16 @@ function validateCategory(id, data) {
     const e = {};
     if (id === 'research') {
         if (!data.project_type) e.project_type = 'Project type is required';
+        if (!data.research_name?.trim()) e.research_name = 'Research name is required';
+        if (!data.level) e.level = 'Level is required';
+        if (!data.fund_amount) e.fund_amount = 'Fund amount is required';
+        if (!data.org_name?.trim()) e.org_name = 'Organization name is required';
         if (!data.funding_letter) e.funding_letter = 'Funding Approval Letter is required';
     }
     if (id === 'innovation') {
-        if (!data.project_title.trim()) e.project_title = 'Project title is required';
-        if (!data.description.trim()) e.description = 'Description is required';
-        if (!data.patent_grant) e.patent_grant = 'Patent Grant document is required';
-        if (!data.innovator_cert) e.innovator_cert = 'Innovator Certificate is required';
+        if (!data.cert_title?.trim()) e.cert_title = 'Certification title is required';
+        if (!data.description?.trim()) e.description = 'Description is required';
+        if (!data.cert_file) e.cert_file = 'Certification document is required';
     }
     if (id === 'entrepreneurship') {
         if (!data.startup_name.trim()) e.startup_name = 'Startup name is required';
@@ -478,9 +522,13 @@ function validateCategory(id, data) {
         if (!data.filing_receipt) e.filing_receipt = 'Filing receipt is required';
     }
     if (id === 'certifications') {
-        if (!data.club_name.trim()) e.club_name = 'Club name is required';
-        if (!data.tenure.trim()) e.tenure = 'Tenure is required';
-        if (!data.impact.trim()) e.impact = 'Leadership impact is required';
+        if (!data.club_name) e.club_name = 'Club name is required';
+        if (!data.position) e.position = 'Position is required';
+        if (!data.recommendation_letter) e.recommendation_letter = 'Recommendation letter is required';
+        if (data.mentored) {
+            if (!data.mentored_team_name?.trim()) e.mentored_team_name = 'Team name is required';
+            if (!data.mentored_comp_name?.trim()) e.mentored_comp_name = 'Competition name is required';
+        }
     }
     if (id === 'other') {
         if (!data.category_type) e.category_type = 'Option type is required';
@@ -495,11 +543,11 @@ async function processCategoryData(id, data) {
     const d = { ...data };
     const fileFields = {
         research: ['funding_letter'],
-        innovation: ['patent_grant', 'innovator_cert'],
+        innovation: ['cert_file'],
         entrepreneurship: ['reg_cert', 'pitch_deck', 'proof'],
         competitions: ['certificate', 'medal_photo', 'hd_photo'],
         patents: ['patent_doc', 'filing_receipt'],
-        certifications: ['testimonials'],
+        certifications: ['recommendation_letter'],
         other: ['proof'],
     };
     for (const field of (fileFields[id] || [])) {

@@ -110,7 +110,7 @@ function SectionContent({ sec }) {
     );
 }
 
-export default function EventDetails({ event, bookedSeats, totalSeats }) {
+export default function EventDetails({ event, bookedSeats, totalSeats, onRegister }) {
     const { title, date, venue, time } = event;
 
     // Use structured DB fields if available, else fall back to hardcoded values
@@ -164,7 +164,7 @@ export default function EventDetails({ event, bookedSeats, totalSeats }) {
                         </div>
 
                         <div style={{ marginBottom: 40 }}>
-                            <SeatCounter bookedSeats={bookedSeats} totalSeats={totalSeats} />
+                            <SeatCounter bookedSeats={bookedSeats} totalSeats={totalSeats} onRegister={onRegister} />
                         </div>
                     </div>
 

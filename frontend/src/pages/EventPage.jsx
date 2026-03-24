@@ -96,6 +96,7 @@ export default function EventPage() {
                         event={event}
                         bookedSeats={event.booked_seats}
                         totalSeats={event.total_seats}
+                        onRegister={() => setModalOpen(true)}
                     />
                 </div>
 
