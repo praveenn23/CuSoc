@@ -1,6 +1,6 @@
 import { Calendar, Clock, MapPin } from 'lucide-react';
 import SeatCounter from './SeatCounter';
-import bannerImg from '../assets/Poster/Achievers.png';
+import bannerImg from '../assets/Poster/Event.jpeg';
 
 
 import './EventDetails.css';
