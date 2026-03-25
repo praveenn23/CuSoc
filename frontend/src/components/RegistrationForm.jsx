@@ -39,14 +39,47 @@ const CLUBS = [
     'CLOUDSTACK CLUB', 'BIZLYTICS CLUB'
 ];
 
+const PROFESSIONAL_SOCIETIES = [
+    { value: '16', label: 'ACMW CHANDIGARH UNIVERSITY PROFESSIONAL SOCIETY' },
+    { value: '17', label: 'ACM CHANDIGARH UNIVERSITY PROFESSIONAL SOCIETY' },
+    { value: '23', label: 'IICHE_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '53', label: 'ASCE_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '60', label: 'PATA_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '64', label: 'IEEECOMSOC CHANDIGARH UNIVERSITY PROFESSIONAL SOCIETY' },
+    { value: '153', label: 'GEEKSFORGEEKS_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '154', label: 'INDIAN_DATA_CLUB_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '155', label: 'COMPUTER_SOCIETY_OF_INDIA_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '156', label: 'ALEXA_DEVELOPER\'S_COMMUNITY_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '167', label: 'ISTE_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '170', label: 'ASHRAE_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '194', label: 'IEEE_PBSC_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
+    { value: '198', label: 'MICROSOFT__CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
+    { value: '202', label: 'ALPHA INTERN STUDENT CHANDIGARH UNIVERSITY CHAPTER' },
+    { value: '206', label: 'AESI_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '270', label: 'IEEE_PES_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
+    { value: '271', label: 'IEEE_CHANDIGARH_UNIVERSITY_STUDENT_BRANCH' },
+    { value: '272', label: 'IEEE_PS_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
+    { value: '273', label: 'ACS-ISC_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
+    { value: '274', label: 'IEEE_RAS_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '275', label: 'IEEE_CIS_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '279', label: 'ASHRAE_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
+    { value: '280', label: 'ASME_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
+    { value: '285', label: 'IEEE_CTSOC_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
+    { value: '287', label: 'IEI_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
+    { value: '288', label: 'IEEEPES_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
+    { value: '290', label: 'ELTAI_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
+    { value: '291', label: 'IEEE CS CHANDIGARH UNIVERSITY STUDENT CHAPTER' },
+    { value: '292', label: 'IEEE_WIE_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' }
+];
+
 const AWARD_CATEGORIES = [
-    { id: 'research',        label: 'Research Award',              emoji: '🔬' },
-    { id: 'innovation',      label: 'Global Certified',            emoji: '🎖️' },
-    { id: 'entrepreneurship',label: 'Entrepreneurship',            emoji: '🚀' },
+    { id: 'research',        label: 'Research/Grant Projects',     emoji: '🔬' },
+    { id: 'innovation',      label: 'Global Profesional Certification',            emoji: '🎖️' },
+    { id: 'entrepreneurship',label: 'Innovation & Entrepreneurship',            emoji: '🚀' },
     { id: 'competitions',    label: 'Competitions & Hackathons',   emoji: '🏆' },
-    { id: 'patents',         label: 'Patents',                     emoji: '📜' },
+    { id: 'patents',         label: 'Innovation & Patents',                     emoji: '📜' },
     { id: 'certifications',  label: 'Leadership',                  emoji: '🎓' },
-    { id: 'other',           label: 'Other Category',              emoji: '✨' },
+    { id: 'other',           label: 'Other Govt Exams & Professional Society Award', emoji: '✨' },
 ];
 
 const TYPES = ['Student', 'Mentor'];
@@ -59,7 +92,7 @@ const blankEntrepreneurship = () => ({ startup_name: '', reg_status: '', reg_num
 const blankCompetitions = () => ({ comp_name: '', level: '', rank: '', event_date: '', org_body: '', org_name: '', prize_money: '', participation_count: '', role: '', description: '', website: '', certificate: null, medal_photo: null, hd_photo: null });
 const blankPatents = () => ({ patent_title: '', app_number: '', status: 'Granted', grant_date: '', patent_office: '', applicant_role: '', patent_doc: null, filing_receipt: null });
 const blankCertifications = () => ({ club_name: '', position: '', tenure: '2025-26', members_converted: '', awareness_sessions: '', achievements: '', recommendation_letter: null, mentored: false, mentored_team_name: '', mentored_comp_name: '' });
-const blankOther = () => ({ category_type: '', award_name: '', proof: null });
+const blankOther = () => ({ category_type: '', award_name: '', society: '', proof: null });
 
 const CATEGORY_BLANK = {
     research: blankResearch,
@@ -130,7 +163,7 @@ function ResearchForm({ data, onChange, errors }) {
         <div className="rf-cat-fields">
             <Field label="Project Type" required error={errors?.project_type}>
                 <Select value={data.project_type} onChange={e => onChange('project_type', e.target.value)} error={errors?.project_type}
-                    options={['Project Funding','Paper Presentation Award','Research Award','Societal Impact Project','Ongoing Govt/DST/Industry Funded Project']}
+                    options={['Project Funding','Paper Presentation Award','Research/Grant Project','Societal Impact Project','Ongoing Govt/DST/Industry Funded Project']}
                     placeholder="— Select Project Type —"
                 />
             </Field>
@@ -191,6 +224,10 @@ function InnovationForm({ data, onChange, errors }) {
 function EntrepreneurshipForm({ data, onChange, errors }) {
     return (
         <div className="rf-cat-fields">
+            <div className="rf-form-note rf-note-blue">
+                <span className="rf-note-icon"><AlertCircle size={18} /></span>
+                <span>Yet to be incubated</span>
+            </div>
             <div className="rf-two-col">
                 <Field label="Startup Name" required error={errors?.startup_name}>
                     <input className={`form-input ${errors?.startup_name ? 'error' : ''}`} value={data.startup_name}
@@ -210,11 +247,6 @@ function EntrepreneurshipForm({ data, onChange, errors }) {
                     <Select value={data.trl_stage} onChange={e => onChange('trl_stage', e.target.value)} error={errors?.trl_stage}
                         options={['4','5','6','7'].map(v => ({ value: v, label: `TRL ${v}` }))} placeholder="— Select Stage —" />
                 </Field>
-            </div>
-            <div className="rf-checkbox-row">
-                <input type="checkbox" id="not-incubated" checked={data.not_incubated}
-                    onChange={e => onChange('not_incubated', e.target.checked)} />
-                <label htmlFor="not-incubated">Not Incubated</label>
             </div>
             <div className="rf-two-col">
                 <Field label="Registration Certificate" required error={errors?.reg_cert}>
@@ -437,9 +469,18 @@ function OtherForm({ data, onChange, errors }) {
                     placeholder="— Select Option —"
                 />
             </Field>
-            <Field label="Name of award or exam clear" required error={errors?.award_name}>
+
+            {data.category_type === 'Professional society award' && (
+                <Field label="Professional Society Name" required error={errors?.society}>
+                    <Select value={data.society} onChange={e => onChange('society', e.target.value)}
+                        error={errors?.society} options={PROFESSIONAL_SOCIETIES} placeholder="— Select Society —" />
+                </Field>
+            )}
+
+            <Field label={data.category_type === 'Government exam' ? 'Name of exam clear' : 'Name of award'} required error={errors?.award_name}>
                 <input className={`form-input ${errors?.award_name ? 'error' : ''}`} value={data.award_name}
-                    onChange={e => onChange('award_name', e.target.value)} placeholder="e.g. GATE 2024 or IEEE Outstanding Student Award" />
+                    onChange={e => onChange('award_name', e.target.value)} 
+                    placeholder={data.category_type === 'Government exam' ? 'e.g. GATE 2024' : 'e.g. Outstanding Student Award'} />
             </Field>
             <Field label="Upload the proof" required error={errors?.proof}>
                 <FileInput id="other-proof" accept="application/pdf,image/*" file={data.proof}
@@ -532,6 +573,7 @@ function validateCategory(id, data) {
     }
     if (id === 'other') {
         if (!data.category_type) e.category_type = 'Option type is required';
+        if (data.category_type === 'Professional society award' && !data.society) e.society = 'Professional society is required';
         if (!data.award_name.trim()) e.award_name = 'Name of award or exam is required';
         if (!data.proof) e.proof = 'Proof document is required';
     }
@@ -718,7 +760,7 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
                 <div className="rf-section">
                     <div className="rf-section-header">
                         <div className="rf-step-badge">Step 2</div>
-                        <h3 className="rf-section-title">Award Categories</h3>
+                        <h3 className="rf-section-title">Nominations Categories</h3>
                         <p className="rf-section-sub">Select one or more categories you are applying for</p>
                     </div>
 
