@@ -453,7 +453,7 @@ function CertificationsForm({ data, onChange, errors }) {
                 </Field>
                 <Field label="Position" required error={errors?.position}>
                     <Select value={data.position} onChange={e => onChange('position', e.target.value)}
-                        error={errors?.position} options={['Secretary', 'Jt. Secretary', 'Core Member']} placeholder="— Select Position —" />
+                        error={errors?.position} options={['Secretary', 'Jt. Secretary']} placeholder="— Select Position —" />
                 </Field>
             </div>
             <div className="rf-two-col">
@@ -617,7 +617,7 @@ function validateCategory(id, data) {
     if (id === 'certifications') {
         if (!data.club_name) e.club_name = 'Club name is required';
         if (!data.position) e.position = 'Position is required';
-        if (!data.recommendation_letter) e.recommendation_letter = 'Recommendation letter is required';
+        // recommendation_letter field is currently hidden — validation removed
         if (data.mentored) {
             if (!data.mentored_team_name?.trim()) e.mentored_team_name = 'Team name is required';
             if (!data.mentored_comp_name?.trim()) e.mentored_comp_name = 'Competition name is required';
