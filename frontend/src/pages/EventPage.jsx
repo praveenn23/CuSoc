@@ -118,7 +118,7 @@ export default function EventPage() {
                             <span>{event.title} — Chandigarh University</span>
                         </div>
                         <p className="footer-copy">
-                            © {new Date().getFullYear()} Praveen Kumar Chandigarh University. All rights reserved.
+                            © {new Date().getFullYear()} Chandigarh University. All rights reserved.
                         </p>
                     </div>
                 </footer>
