@@ -8,22 +8,22 @@ import './RegistrationForm.css';
 const CLUSTERS = ['Engineering', 'Management', 'Liberal Arts and Humanities', 'Science'];
 
 const DEPARTMENTS = [
-    'Chemistry','Mathematics','Physics','Bio-Technology',
-    'Bio-Sciences','Agriculture','Computer Science & Engineering 2nd Year',
-    'Computer Science & Engineering 3rd Year','Computer Science & Engineering 4th Year',
-    'Engineering Foundation 1st Year (Batch 5)','Engineering Foundation 1st Year (Batch 2)',
-    'Engineering Foundation 1st Year (Batch 3)','Civil Engineering','Automobile Engineering',
-    'Electronics & Communication Engineering','Electrical Engineering',
-    'Biotechnology & Food Engineering','Mechanical Engineering','Petroleum Engineering',
-    'Chemical Engineering','Mechatronics Engineering','Aerospace Engineering','UIC — BCA',
-    'UIC — MCA','AIT — CSE','Engineering Foundation 1st Year (Batch 1)',
-    'Engineering Foundation 1st Year (Batch 4)','UIPS','Forensic Science & Toxicology',
-    'Physiotherapy','Medical Lab Technology','Optometry','Nursing','Nutrition & Dietetics',
-    'UITTR','UIPES','Interior Design','Industrial Design','Fine Arts','Fashion & Design',
-    'UILAH','Architecture','Animation, VFX & Gaming','Psychology','Film Studies','UIMS',
-    'TTM','HHM','Airlines','BA-LLB','BBA-LLB','B.COM-LLB','LLB-LLM','Commerce','BBA',
-    'MBA','AIT — MBA','Global School of Finance & Accounting','Economics',
-    'AIT — CSE (AIML)','ME — CSE','English','BBA APEX','Animation, VFX & Gaming (UIFVA)',
+    'Chemistry', 'Mathematics', 'Physics', 'Bio-Technology',
+    'Bio-Sciences', 'Agriculture', 'Computer Science & Engineering 2nd Year',
+    'Computer Science & Engineering 3rd Year', 'Computer Science & Engineering 4th Year',
+    'Engineering Foundation 1st Year (Batch 5)', 'Engineering Foundation 1st Year (Batch 2)',
+    'Engineering Foundation 1st Year (Batch 3)', 'Civil Engineering', 'Automobile Engineering',
+    'Electronics & Communication Engineering', 'Electrical Engineering',
+    'Biotechnology & Food Engineering', 'Mechanical Engineering', 'Petroleum Engineering',
+    'Chemical Engineering', 'Mechatronics Engineering', 'Aerospace Engineering', 'UIC — BCA',
+    'UIC — MCA', 'AIT — CSE', 'Engineering Foundation 1st Year (Batch 1)',
+    'Engineering Foundation 1st Year (Batch 4)', 'UIPS', 'Forensic Science & Toxicology',
+    'Physiotherapy', 'Medical Lab Technology', 'Optometry', 'Nursing', 'Nutrition & Dietetics',
+    'UITTR', 'UIPES', 'Interior Design', 'Industrial Design', 'Fine Arts', 'Fashion & Design',
+    'UILAH', 'Architecture', 'Animation, VFX & Gaming', 'Psychology', 'Film Studies', 'UIMS',
+    'TTM', 'HHM', 'Airlines', 'BA-LLB', 'BBA-LLB', 'B.COM-LLB', 'LLB-LLM', 'Commerce', 'BBA',
+    'MBA', 'AIT — MBA', 'Global School of Finance & Accounting', 'Economics',
+    'AIT — CSE (AIML)', 'ME — CSE', 'English', 'BBA APEX', 'Animation, VFX & Gaming (UIFVA)',
 ];
 
 const CLUBS = [
@@ -73,13 +73,13 @@ const PROFESSIONAL_SOCIETIES = [
 ];
 
 const AWARD_CATEGORIES = [
-    { id: 'research',        label: 'Research/Grant Projects',     emoji: '🔬' },
-    { id: 'innovation',      label: 'Global Profesional Certification',            emoji: '🎖️' },
-    { id: 'entrepreneurship',label: 'Innovation & Entrepreneurship',            emoji: '🚀' },
-    { id: 'competitions',    label: 'Competitions & Hackathons',   emoji: '🏆' },
-    { id: 'patents',         label: 'Innovation & Patents',                     emoji: '📜' },
-    { id: 'certifications',  label: 'Leadership',                  emoji: '🎓' },
-    { id: 'other',           label: 'Other Govt Exams & Professional Society Award', emoji: '✨' },
+    { id: 'research', label: 'Research/Grant Projects', emoji: '🔬' },
+    { id: 'innovation', label: 'Global Profesional Certification', emoji: '🎖️' },
+    { id: 'entrepreneurship', label: 'Innovation & Entrepreneurship', emoji: '🚀' },
+    { id: 'competitions', label: 'Competitions & Hackathons', emoji: '🏆' },
+    { id: 'patents', label: 'Innovation & Patents', emoji: '📜' },
+    { id: 'certifications', label: 'Leadership', emoji: '🎓' },
+    { id: 'other', label: 'Other Govt Exams & Professional Society Award', emoji: '✨' },
 ];
 
 const TYPES = ['Student', 'Mentor'];
@@ -163,7 +163,7 @@ function ResearchForm({ data, onChange, errors }) {
         <div className="rf-cat-fields">
             <Field label="Project Type" required error={errors?.project_type}>
                 <Select value={data.project_type} onChange={e => onChange('project_type', e.target.value)} error={errors?.project_type}
-                    options={['Project Funding','Paper Presentation Award','Research/Grant Project','Societal Impact Project','Ongoing Govt/DST/Industry Funded Project']}
+                    options={['Project Funding', 'Paper Presentation Award', 'Research/Grant Project', 'Societal Impact Project', 'Ongoing Govt/DST/Industry Funded Project']}
                     placeholder="— Select Project Type —"
                 />
             </Field>
@@ -174,7 +174,7 @@ function ResearchForm({ data, onChange, errors }) {
                 </Field>
                 <Field label="Level" required error={errors?.level}>
                     <Select value={data.level} onChange={e => onChange('level', e.target.value)} error={errors?.level}
-                        options={['National','International','College','State','Industry']} placeholder="— Select Level —" />
+                        options={['National', 'International', 'College', 'State', 'Industry']} placeholder="— Select Level —" />
                 </Field>
             </div>
             <div className="rf-two-col">
@@ -235,7 +235,7 @@ function EntrepreneurshipForm({ data, onChange, errors }) {
                 </Field>
                 <Field label="Registration Status" required error={errors?.reg_status}>
                     <Select value={data.reg_status} onChange={e => onChange('reg_status', e.target.value)} error={errors?.reg_status}
-                        options={['Ongoing','LLP','Pvt Ltd','Under Process']} placeholder="— Select Status —" />
+                        options={['Ongoing', 'LLP', 'Pvt Ltd', 'Under Process']} placeholder="— Select Status —" />
                 </Field>
             </div>
             <div className="rf-two-col">
@@ -245,7 +245,7 @@ function EntrepreneurshipForm({ data, onChange, errors }) {
                 </Field>
                 <Field label="TRL Stage" required error={errors?.trl_stage}>
                     <Select value={data.trl_stage} onChange={e => onChange('trl_stage', e.target.value)} error={errors?.trl_stage}
-                        options={['4','5','6','7'].map(v => ({ value: v, label: `TRL ${v}` }))} placeholder="— Select Stage —" />
+                        options={['4', '5', '6', '7'].map(v => ({ value: v, label: `TRL ${v}` }))} placeholder="— Select Stage —" />
                 </Field>
             </div>
             <div className="rf-two-col">
@@ -283,7 +283,7 @@ function CompetitionsForm({ data, onChange, errors }) {
                 </Field>
                 <Field label="Level" required error={errors?.level}>
                     <Select value={data.level} onChange={e => onChange('level', e.target.value)} error={errors?.level}
-                        options={['International','National','State']} placeholder="— Select Level —" />
+                        options={['International', 'National', 'State']} placeholder="— Select Level —" />
                 </Field>
             </div>
             <div className="rf-two-col">
@@ -299,7 +299,7 @@ function CompetitionsForm({ data, onChange, errors }) {
             <div className="rf-two-col">
                 <Field label="Organizing Body" required error={errors?.org_body}>
                     <Select value={data.org_body} onChange={e => onChange('org_body', e.target.value)} error={errors?.org_body}
-                        options={['Government','Industry','State']} placeholder="— Select Body —" />
+                        options={['Government', 'Industry', 'State']} placeholder="— Select Body —" />
                 </Field>
                 <Field label="Organization Name" required error={errors?.org_name}>
                     <input className={`form-input ${errors?.org_name ? 'error' : ''}`} value={data.org_name}
@@ -319,7 +319,7 @@ function CompetitionsForm({ data, onChange, errors }) {
             <div className="rf-two-col">
                 <Field label="Role" required error={errors?.role}>
                     <Select value={data.role} onChange={e => onChange('role', e.target.value)} error={errors?.role}
-                        options={['Team Leader','Member']} placeholder="— Select Role —" />
+                        options={['Team Leader', 'Member']} placeholder="— Select Role —" />
                 </Field>
                 <Field label="Competition Website" required error={errors?.website}>
                     <input type="url" className={`form-input ${errors?.website ? 'error' : ''}`} value={data.website}
@@ -377,11 +377,11 @@ function PatentsForm({ data, onChange, errors }) {
             <div className="rf-two-col">
                 <Field label="Patent Office" required error={errors?.patent_office}>
                     <Select value={data.patent_office} onChange={e => onChange('patent_office', e.target.value)} error={errors?.patent_office}
-                        options={['Indian','US','International']} placeholder="— Select Office —" />
+                        options={['Indian', 'US', 'International']} placeholder="— Select Office —" />
                 </Field>
                 <Field label="Applicant Role" required error={errors?.applicant_role}>
                     <Select value={data.applicant_role} onChange={e => onChange('applicant_role', e.target.value)} error={errors?.applicant_role}
-                        options={['Sole','Co-applicant']} placeholder="— Select Role —" />
+                        options={['Sole', 'Co-applicant']} placeholder="— Select Role —" />
                 </Field>
             </div>
             <div className="rf-two-col">
@@ -479,7 +479,7 @@ function OtherForm({ data, onChange, errors }) {
 
             <Field label={data.category_type === 'Government exam' ? 'Name of exam clear' : 'Name of award'} required error={errors?.award_name}>
                 <input className={`form-input ${errors?.award_name ? 'error' : ''}`} value={data.award_name}
-                    onChange={e => onChange('award_name', e.target.value)} 
+                    onChange={e => onChange('award_name', e.target.value)}
                     placeholder={data.category_type === 'Government exam' ? 'e.g. GATE 2024' : 'e.g. Outstanding Student Award'} />
             </Field>
             <Field label="Upload the proof" required error={errors?.proof}>
@@ -723,7 +723,7 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
                     <div className="rf-two-col">
                         <Field label="Full Name" required error={commonErrors.name}>
                             <input className={`form-input ${commonErrors.name ? 'error' : ''}`} value={common.name}
-                                onChange={e => handleCommon('name', e.target.value)} placeholder="e.g. Praveen Kumar" autoFocus />
+                                onChange={e => handleCommon('name', e.target.value)} placeholder="e.g. Harsh Raj" autoFocus />
                         </Field>
                         <Field label="UID / EID" required error={commonErrors.uid}>
                             <input className={`form-input ${commonErrors.uid ? 'error' : ''}`} value={common.uid}
