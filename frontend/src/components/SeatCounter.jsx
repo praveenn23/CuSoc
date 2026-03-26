@@ -18,7 +18,7 @@ export default function SeatCounter({ totalSeats, bookedSeats, onRegister }) {
                     <span className="seat-icon"><Users size={20} /></span>
                     <span className="seat-title">Available Seats</span>
                 </div>
-                <span className={`chip ${statusClass}`}>{statusText}</span>
+                {/* <span className={`chip ${statusClass}`}>{statusText}</span> */}
             </div>
 
             <div className="seat-bar-wrap">
@@ -36,9 +36,9 @@ export default function SeatCounter({ totalSeats, bookedSeats, onRegister }) {
                 <span className="seat-num seat-booked">
                     <strong>{bookedSeats}</strong> registered
                 </span>
-                <span className="seat-num seat-total">
+                {/* <span className="seat-num seat-total">
                     {totalSeats} total seats
-                </span>
+                </span> */}
             </div>
 
             {!isFull && onRegister && (
