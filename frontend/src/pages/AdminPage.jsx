@@ -107,8 +107,7 @@ function ViewDetailsModal({ registration, onCancel }) {
                         <div style={{ fontWeight: 600, fontSize: 18, color: '#202124' }}>{registration.name}</div>
                         <div style={{ color: '#5f6368', fontSize: 14, marginTop: 8, display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={13}/> {registration.email}</span> &bull; 
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Hash size={13}/> {registration.uid}</span> &bull; 
-                            <span style={{ fontWeight: 600, color: registration.type === 'Student' ? '#1a73e8' : '#137333', background: registration.type === 'Student' ? '#e8f0fe' : '#e6f4ea', padding: '2px 8px', borderRadius: 12 }}>{registration.type}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Hash size={13}/> {registration.uid}</span>
                         </div>
                         <div style={{ color: '#5f6368', fontSize: 14, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Building2 size={13}/> {registration.department} {registration.cluster ? `(${registration.cluster})` : ''}
@@ -752,7 +751,6 @@ export default function AdminPage({ onLogout }) {
                 r.email.toLowerCase().includes(q) ||
                 (r.uid || '').toLowerCase().includes(q) ||
                 (r.department || '').toLowerCase().includes(q) ||
-                (r.type || '').toLowerCase().includes(q) ||
                 (r.cluster || '').toLowerCase().includes(q)
             );
             const attendMatch =
@@ -1014,7 +1012,6 @@ export default function AdminPage({ onLogout }) {
                                             <th onClick={() => toggleSort('uid')} className="sortable">
                                                 UID / EID <SortIcon col="uid" />
                                             </th>
-                                            <th>Type</th>
                                             <th>Department & Cluster</th>
                                             <th>Categories Applied</th>
                                             <th onClick={() => toggleSort('created_at')} className="sortable">
@@ -1037,15 +1034,6 @@ export default function AdminPage({ onLogout }) {
                                                 </td>
                                                 <td className="admin-td-email">{r.email}</td>
                                                 <td>{r.uid || <span className="text-muted">—</span>}</td>
-                                                <td>
-                                                    {r.type ? (
-                                                        <span style={{
-                                                            fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px',
-                                                            background: r.type === 'Student' ? '#e8f0fe' : (r.type === 'Mentor' ? '#fce8e6' : '#e6f4ea'),
-                                                            color: r.type === 'Student' ? '#1a73e8' : (r.type === 'Mentor' ? '#d93025' : '#137333')
-                                                        }}>{r.type}</span>
-                                                    ) : <span className="text-muted">—</span>}
-                                                </td>
                                                 <td>
                                                     {r.department || <span className="admin-td-empty">—</span>}
                                                     {r.cluster && <><br /><small className="text-muted">{r.cluster}</small></>}
