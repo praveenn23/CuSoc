@@ -8,6 +8,7 @@ import {
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
     fetchAdminEvent, updateAdminEvent, sendTicketEmails, markAttendance,
+    updateEvaluation,
 } from '../services/adminApi';
 import './AdminPage.css';
 
@@ -673,6 +674,10 @@ export default function AdminPage({ onLogout }) {
     const [scanLog, setScanLog] = useState([]);
     const ticketInputRef = useRef(null);
 
+    // ── Evaluation Save State (per-row) ────────────────────────────────────────
+    // Map of registrationId -> boolean (is saving)
+    const [evalSaving, setEvalSaving] = useState({});
+
     const load = useCallback(async () => {
         setLoading(true); setError('');
         try {
@@ -736,8 +741,22 @@ export default function AdminPage({ onLogout }) {
         }
     };
 
+    // ── Handle evaluation status change ────────────────────────────────────────
+    const handleEvalChange = async (regId, newStatus) => {
+        // Optimistically update UI
+        setRegs((prev) => prev.map((r) => r.id === regId ? { ...r, evaluation_status: newStatus } : r));
+        setEvalSaving((prev) => ({ ...prev, [regId]: true }));
+        try {
+            await updateEvaluation(regId, newStatus);
+        } catch (err) {
+            console.error('Evaluation update failed:', err);
+        } finally {
+            setEvalSaving((prev) => ({ ...prev, [regId]: false }));
+        }
+    };
 
     // ── Sorting & Filtering ────────────────────────────────────────────────────
+
     const toggleSort = (key) => {
         if (sortKey === key) setSortAsc(!sortAsc);
         else { setSortKey(key); setSortAsc(true); }
@@ -1019,6 +1038,7 @@ export default function AdminPage({ onLogout }) {
                                             </th>
                                             <th>Ticket Sent</th>
                                             <th>Attendance</th>
+                                            <th>Evaluation</th>
                                             <th className="admin-th-action">Action</th>
                                         </tr>
                                     </thead>
@@ -1073,6 +1093,26 @@ export default function AdminPage({ onLogout }) {
                                                     ) : (
                                                         <span className="attend-badge attend-badge-absent">⬜ Absent</span>
                                                     )}
+                                                </td>
+                                                {/* Evaluation dropdown */}
+                                                <td>
+                                                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                                                        <select
+                                                            id={`eval-${r.id}`}
+                                                            value={r.evaluation_status || 'pending'}
+                                                            disabled={evalSaving[r.id]}
+                                                            onChange={(e) => handleEvalChange(r.id, e.target.value)}
+                                                            className={`eval-select eval-select-${r.evaluation_status || 'pending'}`}
+                                                        >
+                                                            <option value="pending">🕐 Pending</option>
+                                                            <option value="shortlisted">⭐ Shortlisted</option>
+                                                            <option value="approved">✅ Approved</option>
+                                                            <option value="rejected">❌ Rejected</option>
+                                                        </select>
+                                                        {evalSaving[r.id] && (
+                                                            <span className="eval-saving-spinner" />
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

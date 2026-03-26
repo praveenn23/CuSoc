@@ -1218,3 +1218,79 @@
         gap: 8px;
     }
 }
+
+/* ── Evaluation Status Dropdown ──────────────────────────────── */
+.eval-select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 5px 30px 5px 10px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    min-width: 130px;
+}
+
+.eval-select:hover {
+    border-color: #adb5bd;
+}
+
+.eval-select:focus {
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, .12);
+}
+
+.eval-select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Pending — neutral grey */
+.eval-select-pending {
+    background-color: #f1f3f4;
+    color: #5f6368;
+    border-color: #dadce0;
+}
+
+/* Shortlisted — amber */
+.eval-select-shortlisted {
+    background-color: #fff8e1;
+    color: #e37400;
+    border-color: #ffe082;
+}
+
+/* Approved — green */
+.eval-select-approved {
+    background-color: #e8f5e9;
+    color: #1b5e20;
+    border-color: #a5d6a7;
+}
+
+/* Rejected — red */
+.eval-select-rejected {
+    background-color: #fce8e6;
+    color: #c5221f;
+    border-color: #f5a5a1;
+}
+
+/* Inline saving spinner shown beside the dropdown */
+.eval-saving-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #dadce0;
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    position: absolute;
+    top: 50%;
+    right: -18px;
+    transform: translateY(-50%);
+}

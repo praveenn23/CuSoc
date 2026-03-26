@@ -591,4 +591,37 @@ const markAttendance = async (req, res) => {
   }
 };
 
-module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance };
+// ── PATCH /admin/registrations/:id/evaluation ────────────────────────────────
+// Updates the evaluation_status field of a single registration.
+const ALLOWED_STATUSES = ['pending', 'shortlisted', 'approved', 'rejected'];
+
+const updateEvaluation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { evaluation_status } = req.body;
+
+    if (!id) return res.status(400).json({ error: 'Registration ID required' });
+    if (!evaluation_status || !ALLOWED_STATUSES.includes(evaluation_status)) {
+      return res.status(400).json({
+        error: `evaluation_status must be one of: ${ALLOWED_STATUSES.join(', ')}`,
+      });
+    }
+
+    const { data, error } = await supabase
+      .from('registrations')
+      .update({ evaluation_status })
+      .eq('id', id)
+      .select('id, evaluation_status')
+      .single();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Registration not found' });
+
+    return res.json({ success: true, id: data.id, evaluation_status: data.evaluation_status });
+  } catch (err) {
+    console.error('updateEvaluation error:', err.message);
+    return res.status(500).json({ error: 'Failed to update evaluation status' });
+  }
+};
+
+module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance, updateEvaluation };
