@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import EventDetails from '../components/EventDetails';
 import SeatCounter from '../components/SeatCounter';
 import Speakers from '../components/Speakers';
-import Partners from '../components/Partners';
+// import Partners from '../components/Partners';
 import RegisterModal from '../components/RegisterModal';
 import { fetchEvent } from '../services/api';
 import './EventPage.css';
@@ -106,9 +106,9 @@ export default function EventPage() {
                 </div>
 
                 {/* ── Community Partners ── */}
-                <div className="reveal">
+                {/* <div className="reveal">
                     <Partners partners={event.partners} />
-                </div>
+                </div> */}
 
                 {/* ── Footer ── */}
                 <footer className="site-footer">
