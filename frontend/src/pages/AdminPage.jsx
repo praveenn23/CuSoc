@@ -1082,20 +1082,17 @@ export default function AdminPage({ onLogout }) {
                                         <tr>
                                             <th className="admin-th-num">#</th>
                                             <th onClick={() => toggleSort('name')} className="sortable">
-                                                Name <SortIcon col="name" />
-                                            </th>
-                                            <th onClick={() => toggleSort('email')} className="sortable">
-                                                Email <SortIcon col="email" />
+                                                Participant <SortIcon col="name" />
                                             </th>
                                             <th onClick={() => toggleSort('uid')} className="sortable">
-                                                UID / EID <SortIcon col="uid" />
+                                                UID <SortIcon col="uid" />
                                             </th>
-                                            <th>Department & Cluster</th>
-                                            <th>Categories Applied</th>
+                                            <th>Dept & Cluster</th>
+                                            <th>Categories</th>
                                             <th onClick={() => toggleSort('created_at')} className="sortable">
-                                                Registered At <SortIcon col="created_at" />
+                                                Date <SortIcon col="created_at" />
                                             </th>
-                                            <th>Ticket Sent</th>
+                                            <th>Ticket</th>
                                             <th>Attendance</th>
                                             <th>Evaluation</th>
                                             <th className="admin-th-action">Action</th>
@@ -1109,17 +1106,19 @@ export default function AdminPage({ onLogout }) {
                                                     <div className={`admin-avatar ${r.attended_at ? 'admin-avatar-present' : ''}`}>
                                                         {r.name.charAt(0).toUpperCase()}
                                                     </div>
-                                                    <span>{r.name}</span>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600 }}>{r.name}</div>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-2px' }}>{r.email}</div>
+                                                    </div>
                                                 </td>
-                                                <td className="admin-td-email">{r.email}</td>
-                                                <td>{r.uid || <span className="text-muted">—</span>}</td>
+                                                <td style={{ fontSize: '13px' }}>{r.uid || <span className="text-muted">—</span>}</td>
                                                 <td>
                                                     {r.department || <span className="admin-td-empty">—</span>}
                                                     {r.cluster && <><br /><small className="text-muted">{r.cluster}</small></>}
                                                 </td>
                                                 <td>
                                                     {Array.isArray(r.categories) && r.categories.length > 0 ? (
-                                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', maxWidth: '180px' }}>
+                                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', maxWidth: '140px' }}>
                                                             {r.categories.map((cat, idx) => (
                                                                 <span key={idx} style={{
                                                                     padding: '2px 6px', background: '#f1f3f4', color: '#3c4043',
