@@ -84,13 +84,14 @@ const AWARD_CATEGORIES = [
 
 
 // ── Blank state factories ──────────────────────────────────────────────────────
-const blankResearch = () => ({ project_type: '', research_name: '', level: '', fund_amount: '', org_name: '', funding_letter: null });
-const blankInnovation = () => ({ cert_title: '', description: '', cert_file: null });
-const blankEntrepreneurship = () => ({ startup_name: '', reg_status: '', reg_number: '', trl_stage: '', not_incubated: false, reg_cert: null, pitch_deck: null, proof: null });
-const blankCompetitions = () => ({ comp_name: '', level: '', rank: '', event_date: '', org_body: '', org_name: '', prize_money: '', participation_count: '', role: '', description: '', website: '', certificate: null, medal_photo: null, hd_photo: null });
-const blankPatents = () => ({ patent_title: '', app_number: '', status: 'Granted', grant_date: '', patent_office: '', applicant_role: '', patent_doc: null, filing_receipt: null });
-const blankCertifications = () => ({ club_name: '', position: '', tenure: '2025-26', members_converted: '', awareness_sessions: '', achievements: '', recommendation_letter: null, mentored: false, mentored_team_name: '', mentored_comp_name: '' });
-const blankOther = () => ({ category_type: '', award_name: '', society: '', proof: null });
+const MENTOR_BLANK = () => ({ mentored_by: false, faculty_name: '', faculty_ecode: '' });
+const blankResearch = () => ({ project_type: '', research_name: '', level: '', fund_amount: '', org_name: '', funding_letter: null, ...MENTOR_BLANK() });
+const blankInnovation = () => ({ cert_title: '', description: '', cert_file: null, ...MENTOR_BLANK() });
+const blankEntrepreneurship = () => ({ startup_name: '', reg_status: '', reg_number: '', trl_stage: '', not_incubated: false, reg_cert: null, pitch_deck: null, proof: null, ...MENTOR_BLANK() });
+const blankCompetitions = () => ({ comp_name: '', level: '', rank: '', event_date: '', org_body: '', org_name: '', prize_money: '', participation_count: '', role: '', description: '', website: '', certificate: null, medal_photo: null, hd_photo: null, ...MENTOR_BLANK() });
+const blankPatents = () => ({ patent_title: '', app_number: '', status: 'Granted', grant_date: '', patent_office: '', applicant_role: '', patent_doc: null, filing_receipt: null, ...MENTOR_BLANK() });
+const blankCertifications = () => ({ club_name: '', position: '', tenure: '2025-26', members_converted: '', awareness_sessions: '', achievements: '', recommendation_letter: null, mentored: false, mentored_team_name: '', mentored_comp_name: '', ...MENTOR_BLANK() });
+const blankOther = () => ({ category_type: '', award_name: '', society: '', proof: null, ...MENTOR_BLANK() });
 
 const CATEGORY_BLANK = {
     research: blankResearch,
@@ -155,6 +156,45 @@ function FileInput({ id, accept, file, onChange, label, error }) {
     );
 }
 
+// ── Shared: Mentored by Faculty section ───────────────────────────────────────
+function MentoredBySection({ data, onChange, errors }) {
+    return (
+        <div style={{ borderTop: '1.5px dashed var(--border)', marginTop: 16, paddingTop: 16 }}>
+            <div className="rf-checkbox-row">
+                <input
+                    type="checkbox"
+                    id={`mentored-by-${data._catKey ?? 'cat'}`}
+                    checked={!!data.mentored_by}
+                    onChange={e => onChange('mentored_by', e.target.checked)}
+                />
+                <label htmlFor={`mentored-by-${data._catKey ?? 'cat'}`}>
+                    Mentored by Faculty
+                </label>
+            </div>
+            {data.mentored_by && (
+                <div className="rf-two-col">
+                    <Field label="Faculty Name" required error={errors?.faculty_name}>
+                        <input
+                            className={`form-input ${errors?.faculty_name ? 'error' : ''}`}
+                            value={data.faculty_name}
+                            onChange={e => onChange('faculty_name', e.target.value)}
+                            placeholder="e.g. Dr. Ankita Sharma"
+                        />
+                    </Field>
+                    <Field label="Faculty E-Code" required error={errors?.faculty_ecode}>
+                        <input
+                            className={`form-input ${errors?.faculty_ecode ? 'error' : ''}`}
+                            value={data.faculty_ecode}
+                            onChange={e => onChange('faculty_ecode', e.target.value)}
+                            placeholder="e.g. E12345"
+                        />
+                    </Field>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ── Category sub-forms ─────────────────────────────────────────────────────────
 function ResearchForm({ data, onChange, errors }) {
     return (
@@ -191,6 +231,7 @@ function ResearchForm({ data, onChange, errors }) {
                     label="Upload Funding Approval Letter (PDF/Image)" error={errors?.funding_letter}
                 />
             </Field>
+            <MentoredBySection data={data} onChange={onChange} errors={errors} />
         </div>
     );
 }
@@ -215,6 +256,7 @@ function InnovationForm({ data, onChange, errors }) {
                     onChange={e => onChange('cert_file', e.target.files[0] || null)}
                     label="Upload Global Certified Certificate" error={errors?.cert_file} />
             </Field>
+            <MentoredBySection data={data} onChange={onChange} errors={errors} />
         </div>
     );
 }
@@ -263,6 +305,7 @@ function EntrepreneurshipForm({ data, onChange, errors }) {
                     onChange={e => onChange('proof', e.target.files[0] || null)}
                     label="Upload Additional Proof (optional)" error={errors?.proof} />
             </Field>
+            <MentoredBySection data={data} onChange={onChange} errors={errors} />
         </div>
     );
 }
@@ -345,6 +388,7 @@ function CompetitionsForm({ data, onChange, errors }) {
                     onChange={e => onChange('hd_photo', e.target.files[0] || null)}
                     label="Upload HD Photo" error={errors?.hd_photo} />
             </Field>
+            <MentoredBySection data={data} onChange={onChange} errors={errors} />
         </div>
     );
 }
@@ -394,6 +438,7 @@ function PatentsForm({ data, onChange, errors }) {
                         label="Upload Filing Receipt" error={errors?.filing_receipt} />
                 </Field>
             </div>
+            <MentoredBySection data={data} onChange={onChange} errors={errors} />
         </div>
     );
 }
@@ -432,11 +477,11 @@ function CertificationsForm({ data, onChange, errors }) {
                 <input className={`form-input ${errors?.achievements ? 'error' : ''}`} value={data.achievements}
                     onChange={e => onChange('achievements', e.target.value)} placeholder="Key achievements..." />
             </Field>
-            <Field label="Recommendation Letter from Faculty Advisor" required error={errors?.recommendation_letter}>
+            {/* <Field label="Recommendation Letter from Faculty Advisor" required error={errors?.recommendation_letter}>
                 <FileInput id="recommendation_letter" accept="application/pdf,image/*" file={data.recommendation_letter}
                     onChange={e => onChange('recommendation_letter', e.target.files[0] || null)}
                     label="Upload Recommendation Letter" error={errors?.recommendation_letter} />
-            </Field>
+            </Field> */}
             <div className="rf-checkbox-row">
                 <input type="checkbox" id="mentored" checked={data.mentored}
                     onChange={e => onChange('mentored', e.target.checked)} />
@@ -454,6 +499,7 @@ function CertificationsForm({ data, onChange, errors }) {
                     </Field>
                 </div>
             )}
+            <MentoredBySection data={data} onChange={onChange} errors={errors} />
         </div>
     );
 }
@@ -486,6 +532,7 @@ function OtherForm({ data, onChange, errors }) {
                     label="Upload the proof (PDF/Image)" error={errors?.proof}
                 />
             </Field>
+            <MentoredBySection data={data} onChange={onChange} errors={errors} />
         </div>
     );
 }
@@ -509,6 +556,14 @@ function validateCommon(common) {
     if (!common.department) e.department = 'Please select your department';
     if (common.selectedCats.length === 0) e.selectedCats = 'Please select at least one award category';
     return e;
+}
+
+// Shared mentor-by validation added to every category
+function validateMentorBy(data, e) {
+    if (data.mentored_by) {
+        if (!data.faculty_name?.trim()) e.faculty_name = 'Faculty name is required';
+        if (!data.faculty_ecode?.trim()) e.faculty_ecode = 'Faculty E-Code is required';
+    }
 }
 
 function validateCategory(id, data) {
@@ -574,6 +629,8 @@ function validateCategory(id, data) {
         if (!data.award_name.trim()) e.award_name = 'Name of award or exam is required';
         if (!data.proof) e.proof = 'Proof document is required';
     }
+    // Validate mentored-by fields for ALL categories
+    validateMentorBy(data, e);
     return e;
 }
 
