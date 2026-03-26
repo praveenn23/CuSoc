@@ -38,4 +38,6 @@ export const markAttendance = (ticketCode) => adminApi.post('/mark-attendance', 
 export const updateEvaluation = (id, evaluation_status) =>
     adminApi.patch(`/registrations/${id}/evaluation`, { evaluation_status });
 
+export const sendApprovedTickets = () => adminApi.post('/send-approved-tickets');
+
 export default adminApi;

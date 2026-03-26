@@ -624,4 +624,234 @@ const updateEvaluation = async (req, res) => {
   }
 };
 
-module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance, updateEvaluation };
+// ── POST /admin/send-approved-tickets ────────────────────────────────────────
+// Sends ticket emails ONLY to registrations where evaluation_status = 'approved'
+// AND ticket_sent_at IS NULL (not yet emailed).
+const sendApprovedTickets = async (req, res) => {
+  try {
+    // 1. Fetch approved, not-yet-emailed registrations
+    const { data: registrations, error: regErr } = await supabase
+      .from('registrations')
+      .select('*')
+      .eq('evaluation_status', 'approved')
+      .is('ticket_sent_at', null)
+      .order('created_at', { ascending: true })
+      .range(0, 4999);
+    if (regErr) throw regErr;
+
+    // Count total approved (including already emailed) for the summary
+    const { count: totalApproved } = await supabase
+      .from('registrations')
+      .select('*', { count: 'exact', head: true })
+      .eq('evaluation_status', 'approved');
+
+    const alreadySent = (totalApproved ?? 0) - (registrations?.length ?? 0);
+
+    if (!registrations || registrations.length === 0) {
+      return res.json({
+        success: true,
+        message: `No new approved participants to email. ${alreadySent > 0 ? `${alreadySent} already emailed.` : ''}`,
+        sent: 0, failed: 0, skipped: alreadySent,
+      });
+    }
+
+    // 2. Fetch event details
+    const { data: event, error: evErr } = await supabase
+      .from('event').select('*').maybeSingle();
+    if (evErr) throw evErr;
+    if (!event) return res.status(404).json({ error: 'Event not found.' });
+
+    const eventDate = new Date(event.date).toLocaleDateString('en-IN', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+    const eventTime = event.time || new Date(event.date).toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit', hour12: true,
+    });
+
+    // 3. Send emails with concurrency cap of 5
+    const CONCURRENCY = 5;
+    const results = { sent: 0, failed: 0, errors: [] };
+
+    for (let i = 0; i < registrations.length; i += CONCURRENCY) {
+      const chunk = registrations.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        chunk.map(async (reg) => {
+          const ticketNo = `EVT-${reg.id.slice(-4).toUpperCase()}`;
+          const department = reg.department || 'N/A';
+
+          const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Google Sans',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0"
+        style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 28px rgba(60,64,67,.14);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#1a73e8 0%,#0d47a1 100%);padding:36px 32px;text-align:center;">
+            <div style="display:inline-block;background:white;border-radius:12px;padding:8px 18px;margin-bottom:16px;">
+              <span style="font-size:24px;font-weight:700;letter-spacing:-1px;">
+                <span style="color:#292b2e">O</span><span style="color:#ea4335">A</span><span style="color:#ea4335">A</span>
+              </span>
+            </div>
+            <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;line-height:1.3;">🎟 Event Ticket Confirmation</h1>
+            <p style="color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px;">Your submission has been approved — ticket issued!</p>
+          </td>
+        </tr>
+
+        <!-- Approved Badge -->
+        <tr>
+          <td style="background:#e8f5e9;padding:16px 32px;text-align:center;border-bottom:1px solid #a5d6a7;">
+            <p style="margin:0;color:#1b5e20;font-size:15px;font-weight:700;">✅ Evaluation Status: APPROVED</p>
+            <p style="margin:6px 0 0;color:#2e7d32;font-size:13px;">
+              Congratulations, <strong>${reg.name}</strong>! Your entry has been reviewed and approved.<br/>
+              Your ticket for <strong>${event.title}</strong> is confirmed.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Ticket Card -->
+        <tr>
+          <td style="padding:28px 32px 8px;">
+            <h2 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#202124;">🎫 Event Ticket Details</h2>
+            <table width="100%" cellpadding="0" cellspacing="0"
+              style="background:#f8f9fa;border-radius:12px;border:2px dashed #c5d8fb;overflow:hidden;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+                    <tr>
+                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;padding-bottom:2px;">Ticket No.</td>
+                      <td style="font-size:18px;font-weight:700;color:#1a73e8;letter-spacing:1px;">${ticketNo}</td>
+                    </tr>
+                  </table>
+                  <hr style="border:none;border-top:1px solid #e0e0e0;margin:0 0 14px;" />
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+                    <tr>
+                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">Name</td>
+                      <td style="font-size:14px;font-weight:600;color:#202124;">${reg.name}</td>
+                    </tr>
+                  </table>
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+                    <tr>
+                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">Department</td>
+                      <td style="font-size:14px;font-weight:500;color:#202124;">${department}</td>
+                    </tr>
+                  </table>
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">University Email</td>
+                      <td style="font-size:14px;font-weight:500;color:#202124;">${reg.email}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Event Details -->
+        <tr>
+          <td style="padding:20px 32px 8px;">
+            <h2 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#202124;">📌 Event Details</h2>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+              <tr>
+                <td width="40" valign="top"><div style="width:36px;height:36px;background:#e8f0fe;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">📅</div></td>
+                <td style="padding-left:12px;vertical-align:middle;">
+                  <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Date</div>
+                  <div style="font-size:14px;font-weight:500;color:#202124;">${eventDate}</div>
+                </td>
+              </tr>
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+              <tr>
+                <td width="40" valign="top"><div style="width:36px;height:36px;background:#e6f4ea;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">🕐</div></td>
+                <td style="padding-left:12px;vertical-align:middle;">
+                  <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Time</div>
+                  <div style="font-size:14px;font-weight:500;color:#202124;">${eventTime}</div>
+                </td>
+              </tr>
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+              <tr>
+                <td width="40" valign="top"><div style="width:36px;height:36px;background:#fce8e6;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">📍</div></td>
+                <td style="padding-left:12px;vertical-align:middle;">
+                  <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Venue</div>
+                  <div style="font-size:14px;font-weight:500;color:#202124;">${event.venue}</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Instructions -->
+        <tr>
+          <td style="padding:16px 32px 24px;">
+            <div style="background:#fffde7;border-radius:12px;padding:18px 22px;border:1px solid #ffe082;">
+              <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#e65100;">📋 Important Instructions</p>
+              <ul style="margin:0;padding-left:18px;color:#3c4043;font-size:13px;line-height:2;">
+                <li>This email serves as your <strong>official event entry ticket</strong>.</li>
+                <li>Your University Email ID will be <strong>verified at the venue</strong>.</li>
+                <li>Duty Leave (DL) attendance will be granted after successful verification.</li>
+                <li>Please carry your <strong>University ID Card</strong>.</li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer strip -->
+        <tr><td style="height:4px;background:linear-gradient(90deg,#ea4335 25%,#fbbc04 25% 50%,#34a853 50% 75%,#1a73e8 75%);"></td></tr>
+        <tr>
+          <td style="padding:14px 32px;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9aa0a6;">
+              © ${new Date().getFullYear()} ABHYUTTHANAM, Chandigarh University — See you there! 🎉
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+          try {
+            await transporter.sendMail({
+              from: `"ABHYUTTHANAM" <${process.env.EMAIL_FROM}>`,
+              to: reg.email,
+              subject: `✅ Your Entry is Approved! Event Ticket – ABHYUTTHANAM | ${ticketNo}`,
+              html,
+            });
+            results.sent++;
+            await supabase
+              .from('registrations')
+              .update({ ticket_sent_at: new Date().toISOString() })
+              .eq('id', reg.id);
+          } catch (mailErr) {
+            results.failed++;
+            results.errors.push({ email: reg.email, error: mailErr.message });
+            console.error(`Approved ticket email failed for ${reg.email}:`, mailErr.message);
+          }
+        })
+      );
+    }
+
+    const skipped = alreadySent;
+    console.log(`✅ Approved ticket blast done — sent: ${results.sent}, failed: ${results.failed}, skipped: ${skipped}`);
+    return res.json({
+      success: true,
+      message: `Tickets sent to ${results.sent} approved participant(s). ${skipped > 0 ? `${skipped} already emailed (skipped).` : ''} Failed: ${results.failed}.`,
+      sent: results.sent,
+      failed: results.failed,
+      skipped,
+      ...(results.errors.length ? { errors: results.errors } : {}),
+    });
+  } catch (err) {
+    console.error('sendApprovedTickets error:', err.message);
+    return res.status(500).json({ error: 'Failed to send approved ticket emails.' });
+  }
+};
+
+module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance, updateEvaluation, sendApprovedTickets };

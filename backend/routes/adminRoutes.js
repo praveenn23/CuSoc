@@ -37,5 +37,6 @@ router.put('/event', updateEvent);
 router.post('/send-tickets', sendTickets);
 router.post('/mark-attendance', markAttendance);
 router.patch('/registrations/:id/evaluation', updateEvaluation);
+router.post('/send-approved-tickets', sendApprovedTickets);
 
 module.exports = router;

@@ -8,7 +8,7 @@ import {
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
     fetchAdminEvent, updateAdminEvent, sendTicketEmails, markAttendance,
-    updateEvaluation,
+    updateEvaluation, sendApprovedTickets,
 } from '../services/adminApi';
 import './AdminPage.css';
 
@@ -82,6 +82,38 @@ function SendTicketsModal({ totalCount, onConfirm, onCancel, loading }) {
                         {loading
                             ? <><span className="spinner" /> Sending…</>
                             : <><Mail size={15} /> Send {totalCount} Tickets</>}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function SendApprovedTicketsModal({ approvedCount, onConfirm, onCancel, loading }) {
+    return (
+        <div className="modal-overlay" onClick={onCancel} role="dialog" aria-modal="true">
+            <div className="modal-box admin-confirm-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="admin-confirm-icon" style={{ background: '#e6f4ea', color: '#1e8e3e' }}>
+                    <UserCheck size={32} />
+                </div>
+                <h3>Send Tickets to Approved Only?</h3>
+                <p>
+                    This will send ticket emails <strong>only to {approvedCount} approved participants</strong> who haven't received their tickets yet.
+                </p>
+                <div className="admin-confirm-actions">
+                    <button className="btn btn-secondary" onClick={onCancel} disabled={loading} id="btn-cancel-send-approved">
+                        Cancel
+                    </button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={onConfirm}
+                        disabled={loading}
+                        id="btn-confirm-send-approved"
+                        style={{ background: '#1e8e3e', borderColor: '#1e8e3e' }}
+                    >
+                        {loading
+                            ? <><span className="spinner" /> Sending…</>
+                            : <><Mail size={15} /> Send {approvedCount} Approved Tickets</>}
                     </button>
                 </div>
             </div>
@@ -664,6 +696,8 @@ export default function AdminPage({ onLogout }) {
 
     const [showSendTicketsModal, setShowSendTicketsModal] = useState(false);
     const [sendingTickets, setSendingTickets] = useState(false);
+    const [showSendApprovedModal, setShowSendApprovedModal] = useState(false);
+    const [sendingApprovedTickets, setSendingApprovedTickets] = useState(false);
     const [ticketMsg, setTicketMsg] = useState('');
 
     // ── Attendance Scanner State ───────────────────────────────────────────────
@@ -842,6 +876,20 @@ export default function AdminPage({ onLogout }) {
         }
     };
 
+    const handleSendApprovedTickets = async () => {
+        setSendingApprovedTickets(true);
+        try {
+            const { data } = await sendApprovedTickets();
+            setTicketMsg(`✅ ${data.message}`);
+        } catch (err) {
+            setTicketMsg(`⚠ ${err.response?.data?.error || 'Failed to send approved tickets.'}`);
+        } finally {
+            setSendingApprovedTickets(false);
+            setShowSendApprovedModal(false);
+            setTimeout(() => setTicketMsg(''), 6000);
+        }
+    };
+
     // ── Sort icon helper ───────────────────────────────────────────────────────
     const SortIcon = ({ col }) => sortKey === col
         ? (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)
@@ -997,6 +1045,17 @@ export default function AdminPage({ onLogout }) {
                                 title={regs.length === 0 ? 'No registrations to send tickets to' : `Send tickets to ${stats?.totalRegistrations ?? regs.length} participants`}
                             >
                                 <Mail size={14} /> Send All Tickets
+                            </button>
+
+                            <button
+                                className="btn btn-sm"
+                                style={{ background: '#1e8e3e', color: 'white', border: 'none', gap: 6 }}
+                                onClick={() => setShowSendApprovedModal(true)}
+                                disabled={regs.filter(r => r.evaluation_status === 'approved' && !r.ticket_sent_at).length === 0}
+                                id="btn-send-approved-tickets"
+                                title="Send tickets only to approved participants"
+                            >
+                                <UserCheck size={14} /> Send Approved Tickets
                             </button>
                             <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
                                 <RefreshCw size={14} /> Refresh
@@ -1362,6 +1421,15 @@ export default function AdminPage({ onLogout }) {
                     onConfirm={handleSendTickets}
                     onCancel={() => !sendingTickets && setShowSendTicketsModal(false)}
                     loading={sendingTickets}
+                />
+            )}
+
+            {showSendApprovedModal && (
+                <SendApprovedTicketsModal
+                    approvedCount={regs.filter(r => r.evaluation_status === 'approved' && !r.ticket_sent_at).length}
+                    onConfirm={handleSendApprovedTickets}
+                    onCancel={() => !sendingApprovedTickets && setShowSendApprovedModal(false)}
+                    loading={sendingApprovedTickets}
                 />
             )}
         </div>
