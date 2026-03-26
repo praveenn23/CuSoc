@@ -1,4 +1,4 @@
-import { Users } from 'lucide-react';
+import { Users, FileText } from 'lucide-react';
 import './SeatCounter.css';
 
 export default function SeatCounter({ totalSeats, bookedSeats, onRegister }) {
@@ -16,7 +16,7 @@ export default function SeatCounter({ totalSeats, bookedSeats, onRegister }) {
             <div className="seat-counter-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                     <span className="seat-icon"><Users size={20} /></span>
-                    <span className="seat-title">Available Seats</span>
+                    <span className="seat-title">Registrations</span>
                 </div>
                 {/* <span className={`chip ${statusClass}`}>{statusText}</span> */}
             </div>
@@ -41,16 +41,19 @@ export default function SeatCounter({ totalSeats, bookedSeats, onRegister }) {
                 </span> */}
             </div>
 
-            {!isFull && onRegister && (
-                <div className="seat-action">
+            <div className="seat-action">
+                {!isFull && onRegister && (
                     <button className="btn btn-primary btn-full" onClick={onRegister} id="btn-seat-register">
                         Register Now
                     </button>
-                    {isAlmostFull && (
-                        <p className="seat-warn-micro">⚡ Hurry! Only {remaining} seats left.</p>
-                    )}
-                </div>
-            )}
+                )}
+                <a href="https://drive.google.com/file/d/1zCEvEQ3MstfdEraIVn77VF06ogkKN4LY/view?usp=sharing" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-full" id="btn-download-guidelines">
+                    <FileText size={18} /> Download Guidelines
+                </a>
+                {!isFull && onRegister && isAlmostFull && (
+                    <p className="seat-warn-micro">⚡ Hurry! Only {remaining} seats left.</p>
+                )}
+            </div>
 
             {isFull && (
                 <div className="seat-full-msg">

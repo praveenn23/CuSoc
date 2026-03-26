@@ -169,6 +169,10 @@ select {
   border-color: var(--blue);
 }
 
+.btn-full {
+  width: 100%;
+}
+
 .btn-danger {
   background: var(--red);
   color: var(--white);
