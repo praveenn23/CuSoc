@@ -11,6 +11,7 @@ const {
     sendTickets,
     markAttendance,
     updateEvaluation,
+    sendApprovedTickets,
 } = require('../controllers/adminController');
 
 // ── No-cache middleware for ALL admin routes ─────────────────────────────────

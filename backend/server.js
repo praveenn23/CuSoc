@@ -11,19 +11,24 @@ const adminRoutes = require('./routes/adminRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 // ── CORS ────────────────────────────────────────────────────────────────────
-// Permanent CORS fix: Allow requests from anywhere. 
-// Security is handled by the x-admin-key instead of CORS.
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
-}));
+// Permanent CORS fix: Handle preflights manually for Vercel stability
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-admin-key');
+    
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
+
+// Also keep the cors package for extra safety on non-OPTIONS requests
+app.use(cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Handle browser preflight OPTIONS requests explicitly
-app.options('*', cors());
 
 
 // ── Health check ────────────────────────────────────────────────────────────
