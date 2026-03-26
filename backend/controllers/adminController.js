@@ -532,7 +532,7 @@ const markAttendance = async (req, res) => {
       console.warn('find_by_ticket_code RPC unavailable, using fallback:', rpcErr.message);
       const { data: allRegs, error: fetchErr } = await supabase
         .from('registrations')
-        .select('id, name, email, uid, type, cluster, department, attended_at')
+        .select('id, name, email, uid, cluster, department, attended_at')
         .range(0, 4999);
 
       if (fetchErr) throw fetchErr;
