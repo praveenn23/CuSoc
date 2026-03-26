@@ -347,37 +347,6 @@
     word-break: break-all;
 }
 
-/* ── Type toggle buttons ─────────────────────────────────────── */
-.rf-type-btns {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.rf-type-btn {
-    padding: 9px 20px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--r-full);
-    background: var(--white);
-    color: var(--text-secondary);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-family: inherit;
-}
-
-.rf-type-btn:hover {
-    border-color: var(--blue);
-    color: var(--blue);
-    background: var(--blue-light);
-}
-
-.rf-type-active {
-    border-color: var(--blue) !important;
-    background: var(--blue) !important;
-    color: white !important;
-}
 
 /* ── Category Fields Container ───────────────────────────────── */
 .rf-cat-fields {
@@ -451,14 +420,6 @@
         font-size: 22px;
     }
 
-    .rf-type-btns {
-        gap: 6px;
-    }
-
-    .rf-type-btn {
-        padding: 8px 14px;
-        font-size: 13px;
-    }
 }
 
 /* ── Form Note ───────────────────────────────────────────────── */

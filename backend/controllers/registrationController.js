@@ -6,7 +6,7 @@ const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAIN || 'cuchd.in').split('
 /**
  * Sends a confirmation email to the registrant
  */
-const sendConfirmationEmail = async ({ name, email, cluster, department, type, categories, event }) => {
+const sendConfirmationEmail = async ({ name, email, cluster, department, categories, event }) => {
   const eventDate = new Date(event.date).toLocaleDateString('en-IN', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
@@ -135,12 +135,12 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, type, c
  */
 const register = async (req, res) => {
   try {
-    const { name, email, uid, cluster, department, type, categories, otp } = req.body;
-
-    // Basic field validation
-    if (!name || !email || !uid || !cluster || !department || !type || !otp) {
-      return res.status(400).json({ error: 'All required fields must be provided' });
-    }
+    const { name, email, uid, cluster, department, categories, otp } = req.body;
+ 
+     // Basic field validation
+     if (!name || !email || !uid || !cluster || !department || !otp) {
+       return res.status(400).json({ error: 'All required fields must be provided' });
+     }
     if (!Array.isArray(categories) || categories.length === 0) {
       return res.status(400).json({ error: 'Please select at least one award category' });
     }
@@ -200,10 +200,9 @@ const register = async (req, res) => {
       name: name.trim(),
       email: normalizedEmail,
       uid: uid.trim(),
-      cluster: cluster.trim(),
-      department: department.trim(),
-      type: type.trim(),
-      categories: categories, // stored as JSONB
+       cluster: cluster.trim(),
+       department: department.trim(),
+       categories: categories, // stored as JSONB
     });
 
     if (insertError) {
@@ -221,14 +220,13 @@ const register = async (req, res) => {
 
     // ── 7. Send confirmation email (non-blocking) ─────────────────────────────
     sendConfirmationEmail({
-      name: name.trim(),
-      email: normalizedEmail,
-      cluster: cluster.trim(),
-      department: department.trim(),
-      type,
-      categories,
-      event,
-    }).catch(err => console.error('Confirmation email failed:', err.message));
+       name: name.trim(),
+       email: normalizedEmail,
+       cluster: cluster.trim(),
+       department: department.trim(),
+       categories,
+       event,
+     }).catch(err => console.error('Confirmation email failed:', err.message));
 
     return res.status(201).json({
       success: true,

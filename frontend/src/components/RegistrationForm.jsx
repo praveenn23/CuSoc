@@ -82,8 +82,6 @@ const AWARD_CATEGORIES = [
     { id: 'other', label: 'Other Govt Exams & Professional Society Award', emoji: '✨' },
 ];
 
-const TYPES = ['Student', 'Mentor'];
-// , 'Coordinator'
 
 // ── Blank state factories ──────────────────────────────────────────────────────
 const blankResearch = () => ({ project_type: '', research_name: '', level: '', fund_amount: '', org_name: '', funding_letter: null });
@@ -509,7 +507,6 @@ function validateCommon(common) {
     if (!common.uid.trim()) e.uid = 'UID / EID is required';
     if (!common.cluster) e.cluster = 'Please select your cluster';
     if (!common.department) e.department = 'Please select your department';
-    if (!common.type) e.type = 'Please select your type';
     if (common.selectedCats.length === 0) e.selectedCats = 'Please select at least one award category';
     return e;
 }
@@ -602,7 +599,7 @@ async function processCategoryData(id, data) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function RegistrationForm({ email, otp, onSuccess }) {
-    const [common, setCommon] = useState({ name: '', uid: '', cluster: '', department: '', type: '', selectedCats: [] });
+    const [common, setCommon] = useState({ name: '', uid: '', cluster: '', department: '', selectedCats: [] });
     const [catData, setCatData] = useState({});
     const [commonErrors, setCommonErrors] = useState({});
     const [catErrors, setCatErrors] = useState({});
@@ -682,7 +679,6 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
                 uid: common.uid.trim(),
                 cluster: common.cluster,
                 department: common.department,
-                type: common.type,
                 categories,
                 otp,
             });
@@ -742,18 +738,6 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
                         </Field>
                     </div>
 
-                    <Field label="Type" required error={commonErrors.type}>
-                        <div className="rf-type-btns">
-                            {TYPES.map(t => (
-                                <button key={t} type="button"
-                                    className={`rf-type-btn ${common.type === t ? 'rf-type-active' : ''}`}
-                                    onClick={() => handleCommon('type', t)}>
-                                    {t}
-                                </button>
-                            ))}
-                        </div>
-                        {commonErrors.type && <span className="rf-error"><AlertCircle size={12} />{commonErrors.type}</span>}
-                    </Field>
                 </div>
 
                 {/* ── STEP 2: Category Selection ── */}
