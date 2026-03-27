@@ -26,51 +26,8 @@ const DEPARTMENTS = [
     'AIT — CSE (AIML)', 'ME — CSE', 'English', 'BBA APEX', 'Animation, VFX & Gaming (UIFVA)',
 ];
 
-const CLUBS = [
-    'ASTRONOMY CLUB', 'DROIDLINX CLUB', 'FINVERSE CLUB', 'MARKETING BRIGADE CLUB',
-    'SCI-FI INNOVATION CLUB', 'FPF CLUB', 'TOURISM CLUB', 'AEROX CLUB',
-    'TECH TATVA CLUB', 'C SQUARE CLUB', 'AI FOR EVERYONE CLUB', 'ARVR CLUB',
-    'ASCENTIA CLUB', 'SOCRATIC-CIRCLE CLUB', 'EVENT CREW CLUB', 'CYSECSPHERE CLUB',
-    'ARTIFICIAL-INTELLIGENCE CLUB', 'ROBOX CLUB', 'ECO GENESIS CLUB',
-    'GAME DEVELOPMENT CLUB', 'PLAYNATION CLUB', 'DEFENCE CLUB', 'BLOCKCHAIN CLUB',
-    'THE VOYAGE CLUB', 'IGNITE YOUTH CLUB', 'YOUNG ORATORS CLUB',
-    'CAMPUS-TO-CORPORATE CLUB', 'ENTREPRENEURSHIP CLUB', 'RAMANUJAN CLUB',
-    'PROTOSTART CLUB', 'KALACONNECT CLUB', 'XCELLENCE CLUB', 'ASTRONAUTICS CLUB',
-    'CLOUDSTACK CLUB', 'BIZLYTICS CLUB'
-];
 
-const PROFESSIONAL_SOCIETIES = [
-    { value: '16', label: 'ACMW CHANDIGARH UNIVERSITY PROFESSIONAL SOCIETY' },
-    { value: '17', label: 'ACM CHANDIGARH UNIVERSITY PROFESSIONAL SOCIETY' },
-    { value: '23', label: 'IICHE_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '53', label: 'ASCE_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '60', label: 'PATA_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '64', label: 'IEEECOMSOC CHANDIGARH UNIVERSITY PROFESSIONAL SOCIETY' },
-    { value: '153', label: 'GEEKSFORGEEKS_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '154', label: 'INDIAN_DATA_CLUB_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '155', label: 'COMPUTER_SOCIETY_OF_INDIA_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '156', label: 'ALEXA_DEVELOPER\'S_COMMUNITY_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '167', label: 'ISTE_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '170', label: 'ASHRAE_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '194', label: 'IEEE_PBSC_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
-    { value: '198', label: 'MICROSOFT__CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
-    { value: '202', label: 'ALPHA INTERN STUDENT CHANDIGARH UNIVERSITY CHAPTER' },
-    { value: '206', label: 'AESI_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '270', label: 'IEEE_PES_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
-    { value: '271', label: 'IEEE_CHANDIGARH_UNIVERSITY_STUDENT_BRANCH' },
-    { value: '272', label: 'IEEE_PS_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
-    { value: '273', label: 'ACS-ISC_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
-    { value: '274', label: 'IEEE_RAS_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '275', label: 'IEEE_CIS_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '279', label: 'ASHRAE_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
-    { value: '280', label: 'ASME_CHANDIGARH_UNIVERSITY_PROFESSIONAL_SOCIETY' },
-    { value: '285', label: 'IEEE_CTSOC_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
-    { value: '287', label: 'IEI_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
-    { value: '288', label: 'IEEEPES_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
-    { value: '290', label: 'ELTAI_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' },
-    { value: '291', label: 'IEEE CS CHANDIGARH UNIVERSITY STUDENT CHAPTER' },
-    { value: '292', label: 'IEEE_WIE_CHANDIGARH_UNIVERSITY_STUDENT_CHAPTER' }
-];
+
 
 const AWARD_CATEGORIES = [
     { id: 'research', label: 'Research/Grant Projects', emoji: '🔬' },
@@ -448,8 +405,8 @@ function CertificationsForm({ data, onChange, errors }) {
         <div className="rf-cat-fields">
             <div className="rf-two-col">
                 <Field label="Club Name" required error={errors?.club_name}>
-                    <Select value={data.club_name} onChange={e => onChange('club_name', e.target.value)}
-                        error={errors?.club_name} options={CLUBS} placeholder="— Select Club —" />
+                    <input className={`form-input ${errors?.club_name ? 'error' : ''}`} value={data.club_name}
+                        onChange={e => onChange('club_name', e.target.value)} placeholder="Name of your club" />
                 </Field>
                 <Field label="Position" required error={errors?.position}>
                     <Select value={data.position} onChange={e => onChange('position', e.target.value)}
@@ -516,8 +473,8 @@ function OtherForm({ data, onChange, errors }) {
 
             {data.category_type === 'Professional society award' && (
                 <Field label="Professional Society Name" required error={errors?.society}>
-                    <Select value={data.society} onChange={e => onChange('society', e.target.value)}
-                        error={errors?.society} options={PROFESSIONAL_SOCIETIES} placeholder="— Select Society —" />
+                    <input className={`form-input ${errors?.society ? 'error' : ''}`} value={data.society}
+                        onChange={e => onChange('society', e.target.value)} placeholder="Name of professional society" />
                 </Field>
             )}
 
