@@ -35,9 +35,6 @@ export const fetchAdminEvent = () => adminApi.get('/event');
 export const updateAdminEvent = (payload) => adminApi.put('/event', payload);
 export const sendTicketEmails = () => adminApi.post('/send-tickets');
 export const markAttendance = (ticketCode) => adminApi.post('/mark-attendance', { ticketCode });
-export const updateEvaluation = (id, evaluation_status) =>
-    adminApi.patch(`/registrations/${id}/evaluation`, { evaluation_status });
-
-export const sendApprovedTickets = () => adminApi.post('/send-approved-tickets');
+export const updateEvaluation = (id, status, remarks) => adminApi.put(`/registrations/${id}/evaluation`, { status, remarks });
 
 export default adminApi;

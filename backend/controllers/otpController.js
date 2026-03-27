@@ -1,19 +1,17 @@
-const supabase = require('../config/supabase');
+const OTP    = require('../models/OTP');
+const Registration = require('../models/Registration');
+const Event  = require('../models/Event');
 const transporter = require('../config/mailer');
 
-const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAIN || 'cuchd.in').split(',').map(d => d.trim());
+const ALLOWED_DOMAINS  = (process.env.ALLOWED_EMAIL_DOMAIN || 'cuchd.in').split(',').map(d => d.trim());
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES) || 10;
 
-/**
- * Generate a 6-digit OTP
- */
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+/** Generate a 6-digit OTP */
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 /**
  * POST /send-otp
- * Validates university email domain, generates OTP, stores in DB, sends email
+ * Validates university email, checks seat availability, stores OTP in MongoDB, sends email.
  */
 const sendOTP = async (req, res) => {
   try {
@@ -25,7 +23,7 @@ const sendOTP = async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Validate university email domain
+    // Validate university domain
     const emailDomain = normalizedEmail.split('@')[1];
     if (!emailDomain || !ALLOWED_DOMAINS.includes(emailDomain)) {
       return res.status(400).json({
@@ -34,45 +32,25 @@ const sendOTP = async (req, res) => {
     }
 
     // Check if already registered
-    const { data: existingReg } = await supabase
-      .from('registrations')
-      .select('id')
-      .eq('email', normalizedEmail)
-      .maybeSingle(); // .single() throws if 0 rows — maybeSingle() returns null safely
-
+    const existingReg = await Registration.findOne({ email: normalizedEmail }).lean();
     if (existingReg) {
-      return res.status(409).json({
-        error: 'This email is already registered for the event',
-      });
+      return res.status(409).json({ error: 'This email is already registered for the event' });
     }
 
     // Check seat availability
-    const { data: event, error: eventError } = await supabase
-      .from('event')
-      .select('total_seats, booked_seats')
-      .single();
-
-    if (eventError) throw eventError;
-
-    if (event.booked_seats >= event.total_seats) {
+    const event = await Event.findOne().lean();
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    if (event.bookedSeats >= event.totalSeats) {
       return res.status(409).json({ error: 'Event is full. No seats available.' });
     }
 
-    // Generate OTP
-    const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000).toISOString();
+    // Generate OTP and expiry
+    const otp       = generateOTP();
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-    // Delete any existing OTPs for this email
-    await supabase.from('otp_verifications').delete().eq('email', normalizedEmail);
-
-    // Store OTP in Supabase
-    const { error: otpError } = await supabase.from('otp_verifications').insert({
-      email: normalizedEmail,
-      otp,
-      expires_at: expiresAt,
-    });
-
-    if (otpError) throw otpError;
+    // Delete any previous OTPs for this email, then insert fresh one
+    await OTP.deleteMany({ email: normalizedEmail });
+    await OTP.create({ email: normalizedEmail, otp, expiresAt });
 
     // Send OTP email
     await transporter.sendMail({
@@ -125,7 +103,7 @@ const sendOTP = async (req, res) => {
 
 /**
  * POST /verify-otp
- * Validates OTP and its expiry
+ * Validates OTP and its expiry.
  */
 const verifyOTP = async (req, res) => {
   try {
@@ -137,22 +115,15 @@ const verifyOTP = async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    const { data, error } = await supabase
-      .from('otp_verifications')
-      .select('*')
-      .eq('email', normalizedEmail)
-      .eq('otp', otp.trim())
-      .single();
+    const record = await OTP.findOne({ email: normalizedEmail, otp: otp.trim() });
 
-    if (error || !data) {
+    if (!record) {
       return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
     }
 
-    // Check expiry
-    const now = new Date();
-    const expiresAt = new Date(data.expires_at);
-    if (now > expiresAt) {
-      await supabase.from('otp_verifications').delete().eq('id', data.id);
+    // Check expiry (MongoDB TTL may not have cleaned it up yet within the same second)
+    if (new Date() > new Date(record.expiresAt)) {
+      await OTP.deleteOne({ _id: record._id });
       return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
     }
 

@@ -8,7 +8,7 @@ import {
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
     fetchAdminEvent, updateAdminEvent, sendTicketEmails, markAttendance,
-    updateEvaluation, sendApprovedTickets,
+    updateEvaluation,
 } from '../services/adminApi';
 import './AdminPage.css';
 
@@ -89,40 +89,8 @@ function SendTicketsModal({ totalCount, onConfirm, onCancel, loading }) {
     );
 }
 
-function SendApprovedTicketsModal({ approvedCount, onConfirm, onCancel, loading }) {
-    return (
-        <div className="modal-overlay" onClick={onCancel} role="dialog" aria-modal="true">
-            <div className="modal-box admin-confirm-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="admin-confirm-icon" style={{ background: '#e6f4ea', color: '#1e8e3e' }}>
-                    <UserCheck size={32} />
-                </div>
-                <h3>Send Tickets to Approved Only?</h3>
-                <p>
-                    This will send ticket emails <strong>only to {approvedCount} approved participants</strong> who haven't received their tickets yet.
-                </p>
-                <div className="admin-confirm-actions">
-                    <button className="btn btn-secondary" onClick={onCancel} disabled={loading} id="btn-cancel-send-approved">
-                        Cancel
-                    </button>
-                    <button
-                        className="btn btn-primary"
-                        onClick={onConfirm}
-                        disabled={loading}
-                        id="btn-confirm-send-approved"
-                        style={{ background: '#1e8e3e', borderColor: '#1e8e3e' }}
-                    >
-                        {loading
-                            ? <><span className="spinner" /> Sending…</>
-                            : <><Mail size={15} /> Send {approvedCount} Approved Tickets</>}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 // ── View Details Modal ──
-function ViewDetailsModal({ registration, onCancel }) {
+function ViewDetailsModal({ registration, onCancel, onUpdateStatus }) {
     if (!registration) return null;
 
     return (
@@ -144,6 +112,29 @@ function ViewDetailsModal({ registration, onCancel }) {
                         </div>
                         <div style={{ color: '#5f6368', fontSize: 14, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Building2 size={13}/> {registration.department} {registration.cluster ? `(${registration.cluster})` : ''}
+                        </div>
+                        <div style={{ color: '#5f6368', fontSize: 14, marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ fontWeight: 600 }}>Evaluation:</div>
+                            <select 
+                                className={`admin-select-sm evaluation-select`}
+                                value={registration.evaluation_status || 'Pending'}
+                                onChange={(e) => onUpdateStatus(registration.id, e.target.value)}
+                                style={{
+                                    fontSize: '13px',
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #dadce0',
+                                    background: registration.evaluation_status === 'Approved' ? '#e6f4ea' : registration.evaluation_status === 'Rejected' ? '#fce8e6' : '#fff',
+                                    color: registration.evaluation_status === 'Approved' ? '#137333' : registration.evaluation_status === 'Rejected' ? '#c5221f' : '#202124',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    outline: 'none'
+                                }}
+                            >
+                                <option value="Pending">🕒 Pending Review</option>
+                                <option value="Approved">✅ Approved</option>
+                                <option value="Rejected">❌ Rejected</option>
+                            </select>
                         </div>
                     </div>
 
@@ -696,8 +687,6 @@ export default function AdminPage({ onLogout }) {
 
     const [showSendTicketsModal, setShowSendTicketsModal] = useState(false);
     const [sendingTickets, setSendingTickets] = useState(false);
-    const [showSendApprovedModal, setShowSendApprovedModal] = useState(false);
-    const [sendingApprovedTickets, setSendingApprovedTickets] = useState(false);
     const [ticketMsg, setTicketMsg] = useState('');
 
     // ── Attendance Scanner State ───────────────────────────────────────────────
@@ -707,10 +696,6 @@ export default function AdminPage({ onLogout }) {
     const [scanResult, setScanResult] = useState(null);
     const [scanLog, setScanLog] = useState([]);
     const ticketInputRef = useRef(null);
-
-    // ── Evaluation Save State (per-row) ────────────────────────────────────────
-    // Map of registrationId -> boolean (is saving)
-    const [evalSaving, setEvalSaving] = useState({});
 
     const load = useCallback(async () => {
         setLoading(true); setError('');
@@ -775,22 +760,8 @@ export default function AdminPage({ onLogout }) {
         }
     };
 
-    // ── Handle evaluation status change ────────────────────────────────────────
-    const handleEvalChange = async (regId, newStatus) => {
-        // Optimistically update UI
-        setRegs((prev) => prev.map((r) => r.id === regId ? { ...r, evaluation_status: newStatus } : r));
-        setEvalSaving((prev) => ({ ...prev, [regId]: true }));
-        try {
-            await updateEvaluation(regId, newStatus);
-        } catch (err) {
-            console.error('Evaluation update failed:', err);
-        } finally {
-            setEvalSaving((prev) => ({ ...prev, [regId]: false }));
-        }
-    };
 
     // ── Sorting & Filtering ────────────────────────────────────────────────────
-
     const toggleSort = (key) => {
         if (sortKey === key) setSortAsc(!sortAsc);
         else { setSortKey(key); setSortAsc(true); }
@@ -876,17 +847,20 @@ export default function AdminPage({ onLogout }) {
         }
     };
 
-    const handleSendApprovedTickets = async () => {
-        setSendingApprovedTickets(true);
+    const handleEvaluationUpdate = async (regId, status) => {
         try {
-            const { data } = await sendApprovedTickets();
-            setTicketMsg(`✅ ${data.message}`);
+            const { data } = await updateEvaluation(regId, status, '');
+            if (data.success) {
+                // Update local state instantly
+                setRegs((prev) => prev.map((r) => 
+                    r.id === regId ? { ...r, evaluation_status: status } : r
+                ));
+                // Update view modal if open for this reg
+                setViewTarget((prev) => prev && prev.id === regId ? { ...prev, evaluation_status: status } : prev);
+            }
         } catch (err) {
-            setTicketMsg(`⚠ ${err.response?.data?.error || 'Failed to send approved tickets.'}`);
-        } finally {
-            setSendingApprovedTickets(false);
-            setShowSendApprovedModal(false);
-            setTimeout(() => setTicketMsg(''), 6000);
+            console.error('Failed to update evaluation:', err);
+            alert('Failed to update evaluation status');
         }
     };
 
@@ -923,7 +897,7 @@ export default function AdminPage({ onLogout }) {
             {/* ── Top Bar ── */}
             <header className="admin-topbar">
                 <div className="gdg-strip" />
-                <div className="admin-topbar-inner container">
+                <div className="admin-topbar-inner admin-container">
                     <div className="admin-topbar-brand">
                         <div className="admin-logo-box">
                             <span style={{ color: '#292b2e' }}>O</span>
@@ -946,7 +920,7 @@ export default function AdminPage({ onLogout }) {
                 </div>
             </header>
 
-            <main className="admin-body container">
+            <main className="admin-body admin-container">
                 {error && (
                     <div className="admin-alert admin-alert-error" style={{ marginBottom: 24 }}>
                         <AlertTriangle size={16} /> {error}
@@ -1046,17 +1020,6 @@ export default function AdminPage({ onLogout }) {
                             >
                                 <Mail size={14} /> Send All Tickets
                             </button>
-
-                            <button
-                                className="btn btn-sm"
-                                style={{ background: '#1e8e3e', color: 'white', border: 'none', gap: 6 }}
-                                onClick={() => setShowSendApprovedModal(true)}
-                                disabled={regs.filter(r => r.evaluation_status === 'approved' && !r.ticket_sent_at).length === 0}
-                                id="btn-send-approved-tickets"
-                                title="Send tickets only to approved participants"
-                            >
-                                <UserCheck size={14} /> Send Approved Tickets
-                            </button>
                             <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
                                 <RefreshCw size={14} /> Refresh
                             </button>
@@ -1082,19 +1045,22 @@ export default function AdminPage({ onLogout }) {
                                         <tr>
                                             <th className="admin-th-num">#</th>
                                             <th onClick={() => toggleSort('name')} className="sortable">
-                                                Participant <SortIcon col="name" />
+                                                Name <SortIcon col="name" />
+                                            </th>
+                                            <th onClick={() => toggleSort('email')} className="sortable">
+                                                Email <SortIcon col="email" />
                                             </th>
                                             <th onClick={() => toggleSort('uid')} className="sortable">
-                                                UID <SortIcon col="uid" />
+                                                UID / EID <SortIcon col="uid" />
                                             </th>
-                                            <th>Dept & Cluster</th>
-                                            <th>Categories</th>
+                                            <th>Department & Cluster</th>
+                                            <th>Categories Applied</th>
                                             <th onClick={() => toggleSort('created_at')} className="sortable">
-                                                Date <SortIcon col="created_at" />
+                                                Registered At <SortIcon col="created_at" />
                                             </th>
-                                            <th>Ticket</th>
-                                            <th>Attendance</th>
+                                            <th>Ticket Sent</th>
                                             <th>Evaluation</th>
+                                            <th>Attendance</th>
                                             <th className="admin-th-action">Action</th>
                                         </tr>
                                     </thead>
@@ -1106,19 +1072,17 @@ export default function AdminPage({ onLogout }) {
                                                     <div className={`admin-avatar ${r.attended_at ? 'admin-avatar-present' : ''}`}>
                                                         {r.name.charAt(0).toUpperCase()}
                                                     </div>
-                                                    <div>
-                                                        <div style={{ fontWeight: 600 }}>{r.name}</div>
-                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-2px' }}>{r.email}</div>
-                                                    </div>
+                                                    <span>{r.name}</span>
                                                 </td>
-                                                <td style={{ fontSize: '13px' }}>{r.uid || <span className="text-muted">—</span>}</td>
+                                                <td className="admin-td-email">{r.email}</td>
+                                                <td>{r.uid || <span className="text-muted">—</span>}</td>
                                                 <td>
                                                     {r.department || <span className="admin-td-empty">—</span>}
                                                     {r.cluster && <><br /><small className="text-muted">{r.cluster}</small></>}
                                                 </td>
                                                 <td>
                                                     {Array.isArray(r.categories) && r.categories.length > 0 ? (
-                                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', maxWidth: '140px' }}>
+                                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', maxWidth: '180px' }}>
                                                             {r.categories.map((cat, idx) => (
                                                                 <span key={idx} style={{
                                                                     padding: '2px 6px', background: '#f1f3f4', color: '#3c4043',
@@ -1141,6 +1105,27 @@ export default function AdminPage({ onLogout }) {
                                                     )}
                                                 </td>
                                                 <td>
+                                                    <select 
+                                                        className={`admin-select-sm evaluation-select evaluation-status-${(r.evaluation_status || 'Pending').toLowerCase()}`}
+                                                        value={r.evaluation_status || 'Pending'}
+                                                        onChange={(e) => handleEvaluationUpdate(r.id, e.target.value)}
+                                                        style={{
+                                                            fontSize: '12px',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '6px',
+                                                            border: '1px solid #dadce0',
+                                                            background: r.evaluation_status === 'Approved' ? '#e6f4ea' : r.evaluation_status === 'Rejected' ? '#fce8e6' : '#fff',
+                                                            color: r.evaluation_status === 'Approved' ? '#137333' : r.evaluation_status === 'Rejected' ? '#c5221f' : '#202124',
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <option value="Pending">🕒 Pending</option>
+                                                        <option value="Approved">✅ Approved</option>
+                                                        <option value="Rejected">❌ Rejected</option>
+                                                    </select>
+                                                </td>
+                                                <td>
                                                     {r.attended_at ? (
                                                         <div className="attend-badge attend-badge-present">
                                                             <span>✅ Present</span>
@@ -1151,26 +1136,6 @@ export default function AdminPage({ onLogout }) {
                                                     ) : (
                                                         <span className="attend-badge attend-badge-absent">⬜ Absent</span>
                                                     )}
-                                                </td>
-                                                {/* Evaluation dropdown */}
-                                                <td>
-                                                    <div style={{ position: 'relative', display: 'inline-block' }}>
-                                                        <select
-                                                            id={`eval-${r.id}`}
-                                                            value={r.evaluation_status || 'pending'}
-                                                            disabled={evalSaving[r.id]}
-                                                            onChange={(e) => handleEvalChange(r.id, e.target.value)}
-                                                            className={`eval-select eval-select-${r.evaluation_status || 'pending'}`}
-                                                        >
-                                                            <option value="pending">🕐 Pending</option>
-                                                            <option value="shortlisted">⭐ Shortlisted</option>
-                                                            <option value="approved">✅ Approved</option>
-                                                            <option value="rejected">❌ Rejected</option>
-                                                        </select>
-                                                        {evalSaving[r.id] && (
-                                                            <span className="eval-saving-spinner" />
-                                                        )}
-                                                    </div>
                                                 </td>
                                                 <td>
                                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1411,6 +1376,7 @@ export default function AdminPage({ onLogout }) {
                 <ViewDetailsModal 
                     registration={viewTarget}
                     onCancel={() => setViewTarget(null)}
+                    onUpdateStatus={handleEvaluationUpdate}
                 />
             )}
 
@@ -1420,15 +1386,6 @@ export default function AdminPage({ onLogout }) {
                     onConfirm={handleSendTickets}
                     onCancel={() => !sendingTickets && setShowSendTicketsModal(false)}
                     loading={sendingTickets}
-                />
-            )}
-
-            {showSendApprovedModal && (
-                <SendApprovedTicketsModal
-                    approvedCount={regs.filter(r => r.evaluation_status === 'approved' && !r.ticket_sent_at).length}
-                    onConfirm={handleSendApprovedTickets}
-                    onCancel={() => !sendingApprovedTickets && setShowSendApprovedModal(false)}
-                    loading={sendingApprovedTickets}
                 />
             )}
         </div>

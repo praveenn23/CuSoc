@@ -1,10 +1,12 @@
-const supabase = require('../config/supabase');
-const transporter = require('../config/mailer');
+const OTP          = require('../models/OTP');
+const Registration = require('../models/Registration');
+const Event        = require('../models/Event');
+const transporter  = require('../config/mailer');
 
 const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAIN || 'cuchd.in').split(',').map(d => d.trim());
 
 /**
- * Sends a confirmation email to the registrant
+ * Sends a confirmation email to the registrant after successful registration.
  */
 const sendConfirmationEmail = async ({ name, email, cluster, department, categories, event }) => {
   const eventDate = new Date(event.date).toLocaleDateString('en-IN', {
@@ -15,11 +17,11 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, categor
   });
 
   const categoryNames = {
-    research: '🔬 Research Award',
-    innovation: '💡 New Innovators',
+    research:       '🔬 Research Award',
+    innovation:     '💡 New Innovators',
     entrepreneurship: '🚀 Entrepreneurship',
-    competitions: '🏆 Competitions & Hackathons',
-    patents: '📜 Patents',
+    competitions:   '🏆 Competitions & Hackathons',
+    patents:        '📜 Patents',
     certifications: '🎓 Certifications / Leadership',
   };
 
@@ -68,7 +70,6 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, categor
               <tr>
                 <td style="padding:28px 32px;">
                   <h2 style="margin:0 0 20px;font-size:18px;font-weight:700;color:#202124;">${event.title}</h2>
-
                   <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
                     <tr>
                       <td width="40" valign="top"><div style="width:36px;height:36px;background:#e8f0fe;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">📅</div></td>
@@ -78,7 +79,6 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, categor
                       </td>
                     </tr>
                   </table>
-
                   <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
                     <tr>
                       <td width="40" valign="top"><div style="width:36px;height:36px;background:#e6f4ea;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">📍</div></td>
@@ -88,7 +88,6 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, categor
                       </td>
                     </tr>
                   </table>
-
                   <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
                     <tr>
                       <td width="40" valign="top"><div style="width:36px;height:36px;background:#fce8e6;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">🎓</div></td>
@@ -110,9 +109,7 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, categor
               </tr>
 
               <!-- Footer -->
-              <tr>
-                <td style="height:4px;background:linear-gradient(90deg,#ea4335 25%,#fbbc04 25% 50%,#34a853 50% 75%,#1a73e8 75%);"></td>
-              </tr>
+              <tr><td style="height:4px;background:linear-gradient(90deg,#ea4335 25%,#fbbc04 25% 50%,#34a853 50% 75%,#1a73e8 75%);"></td></tr>
               <tr>
                 <td style="padding:16px 32px;text-align:center;">
                   <p style="margin:0;font-size:12px;color:#9aa0a6;">
@@ -131,7 +128,7 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, categor
 
 /**
  * POST /register
- * Full registration: OTP verified → check seats → insert → send email
+ * OTP verified → duplicate check → seat check → insert → send email
  */
 const register = async (req, res) => {
   try {
@@ -156,67 +153,44 @@ const register = async (req, res) => {
     }
 
     // ── 1. Verify OTP ─────────────────────────────────────────────────────────
-    const { data: otpData, error: otpError } = await supabase
-      .from('otp_verifications')
-      .select('*')
-      .eq('email', normalizedEmail)
-      .eq('otp', otp.trim())
-      .single();
+    const otpRecord = await OTP.findOne({ email: normalizedEmail, otp: otp.trim() });
 
-    if (otpError || !otpData) {
+    if (!otpRecord) {
       return res.status(400).json({ error: 'OTP not verified. Please verify your OTP first.' });
     }
 
-    const now = new Date();
-    if (now > new Date(otpData.expires_at)) {
+    if (new Date() > new Date(otpRecord.expiresAt)) {
       return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
     }
 
     // ── 2. Check duplicate ────────────────────────────────────────────────────
-    const { data: existingReg } = await supabase
-      .from('registrations')
-      .select('id')
-      .eq('email', normalizedEmail)
-      .maybeSingle();
-
+    const existingReg = await Registration.findOne({ email: normalizedEmail }).lean();
     if (existingReg) {
       return res.status(409).json({ error: 'You are already registered for this event' });
     }
 
     // ── 3. Check seats ────────────────────────────────────────────────────────
-    const { data: event, error: eventError } = await supabase
-      .from('event')
-      .select('*')
-      .maybeSingle();
-
-    if (eventError) throw eventError;
+    const event = await Event.findOne();
     if (!event) return res.status(404).json({ error: 'Event not found' });
-    if (event.booked_seats >= event.total_seats) {
+    if (event.bookedSeats >= event.totalSeats) {
       return res.status(409).json({ error: 'Event is full. No seats available.' });
     }
 
     // ── 4. Insert registration ────────────────────────────────────────────────
-    const { error: insertError } = await supabase.from('registrations').insert({
-      name: name.trim(),
-      email: normalizedEmail,
-      uid: uid.trim(),
-      cluster: cluster.trim(),
+    await Registration.create({
+      name:       name.trim(),
+      email:      normalizedEmail,
+      uid:        uid.trim(),
+      cluster:    cluster.trim(),
       department: department.trim(),
-      categories: categories, // stored as JSONB
+      categories,
     });
 
-    if (insertError) {
-      if (insertError.code === '23505') {
-        return res.status(409).json({ error: 'You are already registered for this event' });
-      }
-      console.error('Insert error:', insertError);
-      return res.status(500).json({ error: `DB insert failed: ${insertError.message} (code: ${insertError.code})` });
-    }
-
-    // ── 5. (Removed manual seat increment — handled automatically via DB trigger trg_sync_booked_seats) ────────
+    // ── 5. Increment booked seats ─────────────────────────────────────────────
+    await Event.findByIdAndUpdate(event._id, { $inc: { bookedSeats: 1 } });
 
     // ── 6. Clean up OTP ───────────────────────────────────────────────────────
-    await supabase.from('otp_verifications').delete().eq('email', normalizedEmail);
+    await OTP.deleteMany({ email: normalizedEmail });
 
     // ── 7. Send confirmation email (non-blocking) ─────────────────────────────
     sendConfirmationEmail({
@@ -233,6 +207,10 @@ const register = async (req, res) => {
       message: 'Application submitted successfully! 🎉',
     });
   } catch (err) {
+    // Duplicate key error from MongoDB
+    if (err.code === 11000) {
+      return res.status(409).json({ error: 'You are already registered for this event' });
+    }
     console.error('register error:', err.message);
     return res.status(500).json({ error: 'Registration failed. Please try again.' });
   }

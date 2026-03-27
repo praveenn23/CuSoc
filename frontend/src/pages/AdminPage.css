@@ -1,14 +1,18 @@
+/* ── Global Utilities (Scoped) ───────────────────────────────── */
+.admin-container {
+    max-width: 1540px;
+    margin: 0 auto;
+    padding: 0 24px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ── Admin Page Layout ──────────────────────────────────────── */
 .admin-page {
     min-height: 100vh;
     background: var(--bg);
     display: flex;
     flex-direction: column;
-}
-
-/* Wider container only for admin page */
-.admin-page .container {
-    max-width: 1440px;
-    width: 96%;
 }
 
 /* ── Top Bar ─────────────────────────────────────────────────── */
@@ -240,9 +244,10 @@
 .admin-table-toolbar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px 20px;
+    gap: 8px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
 }
 
 .admin-search-wrap {
@@ -307,6 +312,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
+    min-width: 1100px;
 }
 
 .admin-table thead tr {
@@ -315,21 +321,27 @@
 }
 
 .admin-table th {
-    padding: 10px 12px;
+    padding: 8px 12px;
     text-align: left;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.5px;
     color: var(--text-secondary);
     white-space: nowrap;
 }
 
-.admin-table th.sortable {
-    cursor: pointer;
-    user-select: none;
-    display: table-cell;
-}
+.admin-table th:nth-child(1), .admin-table td:nth-child(1) { width: 40px; text-align: center; }
+.admin-table th:nth-child(2), .admin-table td:nth-child(2) { min-width: 130px; } /* Name */
+.admin-table th:nth-child(3), .admin-table td:nth-child(3) { min-width: 180px; } /* Email */
+.admin-table th:nth-child(4), .admin-table td:nth-child(4) { min-width: 100px; } /* UID */
+.admin-table th:nth-child(5), .admin-table td:nth-child(5) { min-width: 160px; } /* Dept */
+.admin-table th:nth-child(6), .admin-table td:nth-child(6) { min-width: 120px; } /* Categories */
+.admin-table th:nth-child(7), .admin-table td:nth-child(7) { min-width: 120px; } /* Date */
+.admin-table th:nth-child(8), .admin-table td:nth-child(8) { min-width: 80px; text-align: center; }  /* Ticket */
+.admin-table th:nth-child(9), .admin-table td:nth-child(9) { width: 140px; text-align: center; } /* Evaluation */
+.admin-table th:nth-child(10), .admin-table td:nth-child(10) { width: 120px; text-align: center; } /* Attendance */
+.admin-table th:nth-child(11), .admin-table td:nth-child(11) { width: 130px; text-align: center; } /* Action */
 
 .admin-table th.sortable:hover {
     color: var(--blue);
@@ -356,7 +368,7 @@
 
 .admin-th-num,
 .admin-td-num {
-    width: 32px;
+    width: 40px;
     text-align: center;
     color: var(--text-tertiary);
 }
@@ -364,9 +376,8 @@
 .admin-td-name {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-weight: 500;
-    min-width: 140px;
+    gap: 8px;
+    font-weight: 600;
 }
 
 .admin-avatar {
@@ -390,8 +401,8 @@
 
 .admin-td-date {
     color: var(--text-secondary);
-    font-size: 13px;
-    white-space: nowrap;
+    font-size: 11px;
+    line-height: 1.2;
 }
 
 .admin-td-empty {
@@ -626,6 +637,42 @@
 .admin-avatar-present {
     background: #c8e6c9 !important;
     color: #1b5e20 !important;
+}
+
+/* ── Evaluation Select ────────────────────────────────────────── */
+.evaluation-select {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.evaluation-select:hover {
+    filter: brightness(0.95);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.evaluation-status-pending {
+    background: #fff;
+    color: #202124;
+}
+
+.evaluation-status-approved {
+    background: #e6f4ea !important;
+    color: #137333 !important;
+    border-color: #a5d6a7 !important;
+}
+
+.evaluation-status-rejected {
+    background: #fce8e6 !important;
+    color: #c5221f !important;
+    border-color: #f5c6c3 !important;
+}
+
+/* ── Animation ───────────────────────────────────────────────── */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Alert ───────────────────────────────────────────────────── */
@@ -1223,79 +1270,3 @@
         gap: 8px;
     }
 }
-
-/* ── Evaluation Status Dropdown ──────────────────────────────── */
-.eval-select {
-    appearance: none;
-    -webkit-appearance: none;
-    padding: 5px 30px 5px 10px;
-    border-radius: 20px;
-    border: 1.5px solid var(--border);
-    font-size: 12px;
-    font-weight: 600;
-    font-family: var(--font-sans);
-    cursor: pointer;
-    outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-    background-size: 12px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-    min-width: 110px;
-}
-
-.eval-select:hover {
-    border-color: #adb5bd;
-}
-
-.eval-select:focus {
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, .12);
-}
-
-.eval-select:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* Pending — neutral grey */
-.eval-select-pending {
-    background-color: #f1f3f4;
-    color: #5f6368;
-    border-color: #dadce0;
-}
-
-/* Shortlisted — amber */
-.eval-select-shortlisted {
-    background-color: #fff8e1;
-    color: #e37400;
-    border-color: #ffe082;
-}
-
-/* Approved — green */
-.eval-select-approved {
-    background-color: #e8f5e9;
-    color: #1b5e20;
-    border-color: #a5d6a7;
-}
-
-/* Rejected — red */
-.eval-select-rejected {
-    background-color: #fce8e6;
-    color: #c5221f;
-    border-color: #f5a5a1;
-}
-
-/* Inline saving spinner shown beside the dropdown */
-.eval-saving-spinner {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 2px solid #dadce0;
-    border-top-color: var(--blue);
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    position: absolute;
-    top: 50%;
-    right: -18px;
-    transform: translateY(-50%);
-}
