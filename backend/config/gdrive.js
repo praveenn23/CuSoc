@@ -10,8 +10,11 @@ const getDriveClient = () => {
   if (!rawKey) throw new Error('GOOGLE_PRIVATE_KEY is not set in .env');
 
   const privateKey = rawKey.includes('\\n')
-    ? rawKey.replace(/\\n/g, '\n')
-    : rawKey;
+    ? rawKey.replace(/\\n/g, '\n').trim()
+    : rawKey.trim();
+
+  // Redacted log for Vercel debugging
+  console.log(`🔑 Using Service Account: ${email.slice(0, 5)}...`);
 
   const auth = new google.auth.GoogleAuth({
     credentials: { client_email: email, private_key: privateKey },
@@ -24,21 +27,31 @@ const getDriveClient = () => {
 const getUploadFolderId = async (drive) => {
   if (_cachedFolderId) return _cachedFolderId;
 
-  const configuredId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  const configuredId = process.env.GOOGLE_DRIVE_FOLDER_ID?.trim();
   if (configuredId) {
     try {
-      // supportsAllDrives=true is REQUIRED for Shared Drive folders
+      // 1. Basic check if folder is visible
       await drive.files.get({
         fileId: configuredId,
         fields: 'id',
         supportsAllDrives: true,
       });
+
+      // 2. EXTRA check: can we at least list something there to verify "Editor" access?
+      // If we only have "Reader" access, drive.files.create will fail later.
+      await drive.files.list({
+        pageSize: 1,
+        q: `'${configuredId}' in parents and trashed=false`,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+      });
+
       console.log('📁 Using configured Drive folder:', configuredId);
       _cachedFolderId = configuredId;
       return _cachedFolderId;
     } catch (err) {
-      console.warn('⚠️  Configured folder not accessible:', err.message);
-      console.warn('   → Make sure the service account has been added to the folder as Editor');
+      console.warn(`⚠️ Configured folder (${configuredId}) not accessible or lacks permissions:`, err.message);
+      console.warn('   → Falling back to automatic folder search/creation...');
     }
   }
 
