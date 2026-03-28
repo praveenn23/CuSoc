@@ -33,6 +33,49 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// ── Debug Drive ───────────────────────────────────────────────────────────
+app.get('/debug-drive', async (req, res) => {
+  try {
+    const { uploadToDrive } = require('./config/gdrive');
+    const { google } = require('googleapis');
+    
+    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    const keyExists = !!process.env.GOOGLE_PRIVATE_KEY;
+    
+    // Test auth
+    const rawKey = process.env.GOOGLE_PRIVATE_KEY || '';
+    const privateKey = rawKey.includes('\\n') ? rawKey.replace(/\\n/g, '\n').trim() : rawKey.trim();
+    const auth = new google.auth.GoogleAuth({
+        credentials: { client_email: email, private_key: privateKey },
+        scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+    const drive = google.drive({ version: 'v3', auth });
+
+    // Test folder access
+    let folderInfo = null;
+    try {
+        const fres = await drive.files.get({ fileId: folderId, fields: 'id, name, capabilities', supportsAllDrives: true });
+        folderInfo = fres.data;
+    } catch (e) {
+        folderInfo = { error: e.message };
+    }
+
+    // List all accessible files
+    const listRes = await drive.files.list({ pageSize: 10, fields: 'files(id, name)', includeItemsFromAllDrives: true, supportsAllDrives: true });
+
+    res.json({
+        email: email ? `${email.slice(0, 5)}...` : 'not set',
+        folderId: folderId || 'not set',
+        keyExists,
+        folderInfo,
+        accessibleFiles: listRes.data.files
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.use('/event',    eventRoutes);
 app.use('/',         otpRoutes);           // /send-otp  /verify-otp
