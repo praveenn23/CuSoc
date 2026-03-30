@@ -6,17 +6,23 @@ const transporter  = require('../config/mailer');
 const getStats = async (req, res) => {
   try {
     const [event, totalCount, attendedCount] = await Promise.all([
-      Event.findOne().lean(),
+      Event.findOne(),
       Registration.countDocuments(),
       Registration.countDocuments({ attendedAt: { $ne: null } }),
     ]);
+
+    // Auto-correct bookedSeats if it has drifted from the real registration count
+    // (happens when registrations are imported/seeded outside the /register route)
+    if (event && event.bookedSeats !== totalCount) {
+      await Event.findByIdAndUpdate(event._id, { bookedSeats: totalCount });
+    }
 
     return res.json({
       success: true,
       stats: {
         totalSeats:         event?.totalSeats  ?? 0,
-        bookedSeats:        event?.bookedSeats ?? 0,
-        remainingSeats:     (event?.totalSeats ?? 0) - (event?.bookedSeats ?? 0),
+        bookedSeats:        totalCount,          // always live count
+        remainingSeats:     (event?.totalSeats ?? 0) - totalCount,
         totalRegistrations: totalCount,
         attendedCount,
       },
@@ -78,8 +84,16 @@ const deleteRegistration = async (req, res) => {
 // ── GET /admin/event ─────────────────────────────────────────────────────────
 const getEvent = async (req, res) => {
   try {
-    const event = await Event.findOne();
+    const [event, liveCount] = await Promise.all([
+      Event.findOne(),
+      Registration.countDocuments(),
+    ]);
     if (!event) return res.status(404).json({ error: 'Event not found' });
+    // Keep stored value in sync with real registration count
+    if (event.bookedSeats !== liveCount) {
+      event.bookedSeats = liveCount;
+      await Event.findByIdAndUpdate(event._id, { bookedSeats: liveCount });
+    }
     return res.json({ success: true, event });
   } catch (err) {
     console.error('admin getEvent error:', err.message);
