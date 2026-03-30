@@ -6,23 +6,17 @@ const transporter  = require('../config/mailer');
 const getStats = async (req, res) => {
   try {
     const [event, totalCount, attendedCount] = await Promise.all([
-      Event.findOne(),
+      Event.findOne().lean(),
       Registration.countDocuments(),
       Registration.countDocuments({ attendedAt: { $ne: null } }),
     ]);
-
-    // Auto-correct bookedSeats if it has drifted from the real registration count
-    // (happens when registrations are imported/seeded outside the /register route)
-    if (event && event.bookedSeats !== totalCount) {
-      await Event.findByIdAndUpdate(event._id, { bookedSeats: totalCount });
-    }
 
     return res.json({
       success: true,
       stats: {
         totalSeats:         event?.totalSeats  ?? 0,
-        bookedSeats:        totalCount,          // always live count
-        remainingSeats:     (event?.totalSeats ?? 0) - totalCount,
+        bookedSeats:        event?.bookedSeats ?? 0,
+        remainingSeats:     (event?.totalSeats ?? 0) - (event?.bookedSeats ?? 0),
         totalRegistrations: totalCount,
         attendedCount,
       },
@@ -44,12 +38,10 @@ const getRegistrations = async (req, res) => {
     // Apply toJSON-like transform for snake_case compatibility
     const mapped = registrations.map(r => ({
       ...r,
-      id:                 r._id,
-      created_at:         r.createdAt,
-      ticket_sent_at:     r.ticketSentAt,
-      attended_at:        r.attendedAt,
-      evaluation_status:  r.evaluationStatus  || 'Pending',
-      evaluation_remarks: r.evaluationRemarks || '',
+      id:             r._id,
+      created_at:     r.createdAt,
+      ticket_sent_at: r.ticketSentAt,
+      attended_at:    r.attendedAt,
     }));
 
     return res.json({ success: true, registrations: mapped });
@@ -68,11 +60,8 @@ const deleteRegistration = async (req, res) => {
     const reg = await Registration.findByIdAndDelete(id);
     if (!reg) return res.status(404).json({ error: 'Registration not found' });
 
-    // Decrement booked seats only if above 0 to prevent -1 bug
-    await Event.findOneAndUpdate(
-      { bookedSeats: { $gt: 0 } }, 
-      { $inc: { bookedSeats: -1 } }
-    );
+    // Decrement booked seats
+    await Event.findOneAndUpdate({}, { $inc: { bookedSeats: -1 } });
 
     return res.json({ success: true, message: 'Registration deleted successfully' });
   } catch (err) {
@@ -84,16 +73,8 @@ const deleteRegistration = async (req, res) => {
 // ── GET /admin/event ─────────────────────────────────────────────────────────
 const getEvent = async (req, res) => {
   try {
-    const [event, liveCount] = await Promise.all([
-      Event.findOne(),
-      Registration.countDocuments(),
-    ]);
+    const event = await Event.findOne();
     if (!event) return res.status(404).json({ error: 'Event not found' });
-    // Keep stored value in sync with real registration count
-    if (event.bookedSeats !== liveCount) {
-      event.bookedSeats = liveCount;
-      await Event.findByIdAndUpdate(event._id, { bookedSeats: liveCount });
-    }
     return res.json({ success: true, event });
   } catch (err) {
     console.error('admin getEvent error:', err.message);
@@ -174,25 +155,20 @@ const adminLogin = async (req, res) => {
 // ── POST /admin/send-tickets ─────────────────────────────────────────────────
 const sendTickets = async (req, res) => {
   try {
-    // Fetch registrations that are APPROVED but have NOT been sent a ticket yet
-    const registrations = await Registration.find({ 
-      ticketSentAt: null,
-      evaluationStatus: 'Approved'
-    })
+    // Fetch registrations that have NOT been sent a ticket yet
+    const registrations = await Registration.find({ ticketSentAt: null })
       .sort({ createdAt: 1 })
       .limit(5000)
       .lean();
 
     const totalCount = await Registration.countDocuments();
-    const approvedNotSent = registrations.length;
-    const statsMessage = `Total: ${totalCount} | Approved & Not Sent: ${approvedNotSent}`;
-    console.log(statsMessage);
+    const alreadySent = totalCount - registrations.length;
 
     if (!registrations || registrations.length === 0) {
       return res.json({
         success: true,
-        message: `No approved participants weighting for tickets. (Make sure status is set to Approved first!)`,
-        sent: 0, failed: 0, skipped: 0,
+        message: `All ${totalCount} participants have already received their ticket emails. No new emails sent.`,
+        sent: 0, failed: 0, skipped: alreadySent,
       });
     }
 
@@ -428,12 +404,13 @@ const sendTickets = async (req, res) => {
       );
     }
 
-    console.log(`✅ Ticket blast done — sent: ${results.sent}, failed: ${results.failed}`);
+    console.log(`✅ Ticket blast done — sent: ${results.sent}, failed: ${results.failed}, skipped: ${alreadySent}`);
     return res.json({
       success: true,
-      message: `Tickets successfully sent to ${results.sent} approved participant(s). Failed: ${results.failed}.`,
+      message: `Tickets sent to ${results.sent} new participant(s). ${alreadySent > 0 ? `${alreadySent} already emailed (skipped).` : ''} Failed: ${results.failed}.`,
       sent:    results.sent,
       failed:  results.failed,
+      skipped: alreadySent,
       ...(results.errors.length ? { errors: results.errors } : {}),
     });
   } catch (err) {
@@ -505,50 +482,4 @@ const markAttendance = async (req, res) => {
   }
 };
 
-// ── PUT /admin/registrations/:id/evaluation ────────────────────────────────
-const updateEvaluation = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, remarks } = req.body;
-
-    if (!id) return res.status(400).json({ error: 'Registration ID required' });
-    if (!status) return res.status(400).json({ error: 'Evaluation status is required' });
-
-    const allowedStatus = ['Pending', 'Approved', 'Rejected'];
-    if (!allowedStatus.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status. Use Pending, Approved, or Rejected.' });
-    }
-
-    const updated = await Registration.findByIdAndUpdate(
-      id,
-      { 
-        evaluationStatus: status,
-        evaluationRemarks: remarks || ''
-      },
-      { new: true }
-    );
-
-    if (!updated) return res.status(404).json({ error: 'Registration not found' });
-
-    return res.json({ 
-      success: true, 
-      message: 'Evaluation updated successfully',
-      registration: updated
-    });
-  } catch (err) {
-    console.error('updateEvaluation error:', err.message);
-    return res.status(500).json({ error: 'Failed to update evaluation' });
-  }
-};
-
-module.exports = { 
-  getStats, 
-  getRegistrations, 
-  deleteRegistration, 
-  getEvent, 
-  updateEvent, 
-  adminLogin, 
-  sendTickets, 
-  markAttendance,
-  updateEvaluation
-};
+module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance };
