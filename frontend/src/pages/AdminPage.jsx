@@ -101,21 +101,21 @@ function ViewDetailsModal({ registration, onCancel, onUpdateStatus }) {
                     <h3 style={{ margin: 0, fontSize: 18, color: '#202124' }}>Registration Details</h3>
                     <button className="btn btn-secondary btn-sm" onClick={onCancel} style={{ padding: '6px', borderRadius: '50%' }}><X size={16} /></button>
                 </div>
-                
+
                 {/* Scrollable Body */}
                 <div style={{ padding: '24px', overflowY: 'auto' }}>
                     <div style={{ padding: '16px', background: '#f8f9fa', borderRadius: 12, marginBottom: 24, border: '1px solid #e8eaed' }}>
                         <div style={{ fontWeight: 600, fontSize: 18, color: '#202124' }}>{registration.name}</div>
                         <div style={{ color: '#5f6368', fontSize: 14, marginTop: 8, display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={13}/> {registration.email}</span> &bull; 
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Hash size={13}/> {registration.uid}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={13} /> {registration.email}</span> &bull;
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Hash size={13} /> {registration.uid}</span>
                         </div>
                         <div style={{ color: '#5f6368', fontSize: 14, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Building2 size={13}/> {registration.department} {registration.cluster ? `(${registration.cluster})` : ''}
+                            <Building2 size={13} /> {registration.department} {registration.cluster ? `(${registration.cluster})` : ''}
                         </div>
                         <div style={{ color: '#5f6368', fontSize: 14, marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
                             <div style={{ fontWeight: 600 }}>Evaluation:</div>
-                            <select 
+                            <select
                                 className={`admin-select-sm evaluation-select`}
                                 value={registration.evaluation_status || 'Pending'}
                                 onChange={(e) => onUpdateStatus(registration.id, e.target.value)}
@@ -139,7 +139,7 @@ function ViewDetailsModal({ registration, onCancel, onUpdateStatus }) {
                     </div>
 
                     <h4 style={{ margin: '0 0 16px 0', paddingBottom: 8, fontSize: 16, color: '#202124', fontWeight: 600 }}>Applied Categories</h4>
-                    
+
                     {(!registration.categories || registration.categories.length === 0) ? (
                         <div style={{ padding: '20px', background: '#f8f9fa', borderRadius: 8, textAlign: 'center', color: '#5f6368', border: '1px dashed #dadce0' }}>
                             No specific category data submitted.
@@ -682,7 +682,7 @@ export default function AdminPage({ onLogout }) {
     const [deleteTarget, setDeleteTarget] = useState(null); // { id, name, email }
     const [deleting, setDeleting] = useState(false);
     const [deleteMsg, setDeleteMsg] = useState('');
-    
+
     const [viewTarget, setViewTarget] = useState(null); // the full registration object to view
 
     const [showSendTicketsModal, setShowSendTicketsModal] = useState(false);
@@ -692,10 +692,25 @@ export default function AdminPage({ onLogout }) {
     // ── Attendance Scanner State ───────────────────────────────────────────────
     const [ticketInput, setTicketInput] = useState('');
     const [attendFilter, setAttendFilter] = useState('all');
+    const [clusterFilter, setClusterFilter] = useState('all');
+    const [deptFilter, setDeptFilter] = useState('all');
+    const [catFilter, setCatFilter] = useState('all');
     const [scanLoading, setScanLoading] = useState(false);
     const [scanResult, setScanResult] = useState(null);
     const [scanLog, setScanLog] = useState([]);
     const ticketInputRef = useRef(null);
+
+    // Derive unique lists for the dropdowns from the actual data
+    const uniqueClusters = [...new Set(regs.map(r => r.cluster).filter(Boolean))].sort();
+    const uniqueDepts = [...new Set(regs.map(r => r.department).filter(Boolean))].sort();
+    const allCategories = [
+        { id: 'research', label: 'Research' },
+        { id: 'innovation', label: 'Innovators' },
+        { id: 'entrepreneurship', label: 'Entrepreneurship' },
+        { id: 'competitions', label: 'Competitions' },
+        { id: 'patents', label: 'Patents' },
+        { id: 'certifications', label: 'Leadership' },
+    ];
 
     const load = useCallback(async () => {
         setLoading(true); setError('');
@@ -781,7 +796,13 @@ export default function AdminPage({ onLogout }) {
                 attendFilter === 'all' ? true :
                     attendFilter === 'present' ? !!r.attended_at :
                         !r.attended_at;
-            return textMatch && attendMatch;
+
+            const clusterMatch = clusterFilter === 'all' ? true : r.cluster === clusterFilter;
+            const deptMatch = deptFilter === 'all' ? true : r.department === deptFilter;
+            const catMatch = catFilter === 'all' ? true :
+                (Array.isArray(r.categories) && r.categories.some(c => c.type === catFilter));
+
+            return textMatch && attendMatch && clusterMatch && deptMatch && catMatch;
         })
         .sort((a, b) => {
             const av = a[sortKey] || '';
@@ -803,7 +824,7 @@ export default function AdminPage({ onLogout }) {
     const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
     // Reset to page 1 whenever search / filter / sort changes
-    useEffect(() => { setPage(1); }, [search, attendFilter, sortKey, sortAsc]);
+    useEffect(() => { setPage(1); }, [search, attendFilter, clusterFilter, deptFilter, catFilter, sortKey, sortAsc]);
 
     // ── Delete ─────────────────────────────────────────────────────────────────
     const handleDelete = async () => {
@@ -852,7 +873,7 @@ export default function AdminPage({ onLogout }) {
             const { data } = await updateEvaluation(regId, status, '');
             if (data.success) {
                 // Update local state instantly
-                setRegs((prev) => prev.map((r) => 
+                setRegs((prev) => prev.map((r) =>
                     r.id === regId ? { ...r, evaluation_status: status } : r
                 ));
                 // Update view modal if open for this reg
@@ -992,7 +1013,39 @@ export default function AdminPage({ onLogout }) {
                                     </button>
                                 )}
                             </div>
-                            {/* Attendance filter pills — counts from stats API (authoritative DB) */}
+
+                            <div className="admin-filters-grid">
+                                <select
+                                    className="admin-select-sm"
+                                    value={deptFilter}
+                                    onChange={(e) => setDeptFilter(e.target.value)}
+                                    id="filter-dept"
+                                >
+                                    <option value="all">🏢 All Departments</option>
+                                    {uniqueDepts.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+
+                                <select
+                                    className="admin-select-sm"
+                                    value={clusterFilter}
+                                    onChange={(e) => setClusterFilter(e.target.value)}
+                                    id="filter-cluster"
+                                >
+                                    <option value="all">📍 All Clusters</option>
+                                    {uniqueClusters.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+
+                                <select
+                                    className="admin-select-sm"
+                                    value={catFilter}
+                                    onChange={(e) => setCatFilter(e.target.value)}
+                                    id="filter-category"
+                                >
+                                    <option value="all">🏆 All Categories</option>
+                                    {allCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                </select>
+                            </div>
+
                             <div className="attend-filter-pills">
                                 <button
                                     className={`attend-pill ${attendFilter === 'all' ? 'active' : ''}`}
@@ -1105,7 +1158,7 @@ export default function AdminPage({ onLogout }) {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <select 
+                                                    <select
                                                         className={`admin-select-sm evaluation-select evaluation-status-${(r.evaluation_status || 'Pending').toLowerCase()}`}
                                                         value={r.evaluation_status || 'Pending'}
                                                         onChange={(e) => handleEvaluationUpdate(r.id, e.target.value)}
@@ -1373,7 +1426,7 @@ export default function AdminPage({ onLogout }) {
             )}
 
             {viewTarget && (
-                <ViewDetailsModal 
+                <ViewDetailsModal
                     registration={viewTarget}
                     onCancel={() => setViewTarget(null)}
                     onUpdateStatus={handleEvaluationUpdate}

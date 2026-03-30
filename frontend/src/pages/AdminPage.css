@@ -250,6 +250,37 @@
     flex-wrap: wrap;
 }
 
+.admin-filters-grid {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.admin-select-sm {
+    height: 34px;
+    padding: 0 10px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    outline: none;
+    transition: all var(--transition);
+}
+
+.admin-select-sm:focus {
+    border-color: var(--blue);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+.admin-select-sm:hover {
+    border-color: #aaa;
+}
+
 .admin-search-wrap {
     flex: 1;
     position: relative;

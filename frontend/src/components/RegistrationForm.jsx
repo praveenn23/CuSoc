@@ -33,7 +33,7 @@ const AWARD_CATEGORIES = [
     { id: 'entrepreneurship', label: 'Innovation & Entrepreneurship', emoji: '🚀' },
     { id: 'competitions', label: 'Competitions & Hackathons', emoji: '🏆' },
     { id: 'patents', label: 'Innovation & Patents', emoji: '📜' },
-    { id: 'certifications', label: 'Leadership', emoji: '🎓' },
+    { id: 'leadership', label: 'Leadership', emoji: '🎓' },
     { id: 'other', label: 'Other Govt Exams & Professional Society Award', emoji: '✨' },
 ];
 
@@ -45,7 +45,7 @@ const blankInnovation = () => ({ cert_title: '', description: '', cert_file: nul
 const blankEntrepreneurship = () => ({ startup_name: '', reg_status: '', reg_number: '', trl_stage: '', not_incubated: false, reg_cert: null, pitch_deck: null, proof: null, ...MENTOR_BLANK() });
 const blankCompetitions = () => ({ comp_name: '', level: '', rank: '', event_date: '', org_body: '', org_name: '', prize_money: '', participation_count: '', role: '', description: '', website: '', certificate: null, medal_photo: null, hd_photo: null, ...MENTOR_BLANK() });
 const blankPatents = () => ({ patent_title: '', app_number: '', status: 'Granted', grant_date: '', patent_office: '', applicant_role: '', patent_doc: null, filing_receipt: null, ...MENTOR_BLANK() });
-const blankCertifications = () => ({ club_name: '', position: '', tenure: '2025-26', members_converted: '', awareness_sessions: '', achievements: '', recommendation_letter: null, mentored: false, mentored_team_name: '', mentored_comp_name: '', ...MENTOR_BLANK() });
+const blankLeadership = () => ({ club_name: '', position: '', tenure: '2024-26', members_converted: '', awareness_sessions: '', achievements: '', recommendation_letter: null, mentored: false, mentored_team_name: '', mentored_comp_name: '', ...MENTOR_BLANK() });
 const blankOther = () => ({ category_type: '', award_name: '', society: '', proof: null, ...MENTOR_BLANK() });
 
 const CATEGORY_BLANK = {
@@ -54,7 +54,7 @@ const CATEGORY_BLANK = {
     entrepreneurship: blankEntrepreneurship,
     competitions: blankCompetitions,
     patents: blankPatents,
-    certifications: blankCertifications,
+    leadership: blankLeadership,
     other: blankOther,
 };
 
@@ -399,7 +399,7 @@ function PatentsForm({ data, onChange, errors }) {
     );
 }
 
-function CertificationsForm({ data, onChange, errors }) {
+function LeadershipForm({ data, onChange, errors }) {
     return (
         <div className="rf-cat-fields">
             <div className="rf-two-col">
@@ -501,7 +501,7 @@ const CATEGORY_FORMS = {
     entrepreneurship: EntrepreneurshipForm,
     competitions: CompetitionsForm,
     patents: PatentsForm,
-    certifications: CertificationsForm,
+    leadership: LeadershipForm,
     other: OtherForm,
 };
 
@@ -572,7 +572,7 @@ function validateCategory(id, data) {
         if (!data.patent_doc) e.patent_doc = 'Patent document is required';
         if (!data.filing_receipt) e.filing_receipt = 'Filing receipt is required';
     }
-    if (id === 'certifications') {
+    if (id === 'leadership') {
         if (!data.club_name?.trim()) e.club_name = 'Club name is required';
         if (!data.position) e.position = 'Position is required';
         // recommendation_letter field is currently hidden — validation removed
@@ -601,7 +601,7 @@ async function processCategoryData(id, data) {
         entrepreneurship: ['reg_cert', 'pitch_deck', 'proof'],
         competitions: ['certificate', 'medal_photo', 'hd_photo'],
         patents: ['patent_doc', 'filing_receipt'],
-        certifications: ['recommendation_letter'],
+        leadership: ['recommendation_letter'],
         other: ['proof'],
     };
     for (const field of (fileFields[id] || [])) {
