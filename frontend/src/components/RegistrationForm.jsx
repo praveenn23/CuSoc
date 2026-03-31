@@ -43,7 +43,7 @@ const MENTOR_BLANK = () => ({ mentored_by: false, faculty_name: '', faculty_ecod
 const blankResearch = () => ({ project_type: '', research_name: '', level: '', fund_amount: '', org_name: '', funding_letter: null, ...MENTOR_BLANK() });
 const blankInnovation = () => ({ cert_title: '', description: '', cert_file: null, ...MENTOR_BLANK() });
 const blankEntrepreneurship = () => ({ startup_name: '', reg_status: '', reg_number: '', trl_stage: '', not_incubated: false, reg_cert: null, pitch_deck: null, proof: null, ...MENTOR_BLANK() });
-const blankCompetitions = () => ({ comp_name: '', level: '', rank: '', event_date: '', org_body: '', org_name: '', prize_money: '', participation_count: '', role: '', description: '', website: '', certificate: null, medal_photo: null, hd_photo: null, ...MENTOR_BLANK() });
+const blankCompetitions = () => ({ comp_name: '', level: '', rank: '', event_date: '', org_body: '', org_name: '', prize_money: '', goodies_details: '', participation_count: '', role: '', description: '', website: '', certificate: null, medal_photo: null, hd_photo: null, ...MENTOR_BLANK() });
 const blankPatents = () => ({ patent_title: '', app_number: '', status: 'Granted', grant_date: '', patent_office: '', applicant_role: '', patent_doc: null, filing_receipt: null, ...MENTOR_BLANK() });
 const blankLeadership = () => ({ club_name: '', position: '', tenure: '2024-26', members_converted: '', awareness_sessions: '', achievements: '', recommendation_letter: null, mentored: false, mentored_team_name: '', mentored_comp_name: '', ...MENTOR_BLANK() });
 const blankOther = () => ({ category_type: '', award_name: '', society: '', proof: null, ...MENTOR_BLANK() });
@@ -273,6 +273,10 @@ function CompetitionsForm({ data, onChange, errors }) {
                 <span className="rf-note-icon">ℹ️</span>
                 All national international state professional society startup related competitions and hackathon information has to be submitted only here
             </div>
+            <div className="rf-form-note rf-note-blue">
+                <span className="rf-note-icon">ℹ️</span>
+                If you are getting goodies worth that amount, please specify below.
+            </div>
             <div className="rf-two-col">
                 <Field label="Competition Name" required error={errors?.comp_name}>
                     <input className={`form-input ${errors?.comp_name ? 'error' : ''}`} value={data.comp_name}
@@ -313,6 +317,10 @@ function CompetitionsForm({ data, onChange, errors }) {
                         onChange={e => onChange('participation_count', e.target.value)} placeholder="e.g. 150" min="1" />
                 </Field>
             </div>
+            <Field label="Specify Goodies (if any)" error={errors?.goodies_details}>
+                <input className={`form-input ${errors?.goodies_details ? 'error' : ''}`} value={data.goodies_details}
+                    onChange={e => onChange('goodies_details', e.target.value)} placeholder="e.g. Laptop, Vouchers, etc." />
+            </Field>
             <div className="rf-two-col">
                 <Field label="Role" required error={errors?.role}>
                     <Select value={data.role} onChange={e => onChange('role', e.target.value)} error={errors?.role}

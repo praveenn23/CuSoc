@@ -1,7 +1,7 @@
-const OTP          = require('../models/OTP');
+const OTP = require('../models/OTP');
 const Registration = require('../models/Registration');
-const Event        = require('../models/Event');
-const transporter  = require('../config/mailer');
+const Event = require('../models/Event');
+const transporter = require('../config/mailer');
 
 const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAIN || 'cuchd.in').split(',').map(d => d.trim());
 
@@ -17,11 +17,11 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, categor
   });
 
   const categoryNames = {
-    research:       '🔬 Research Award',
-    innovation:     '💡 New Innovators',
+    research: '🔬 Research Award',
+    innovation: '💡 New Innovators',
     entrepreneurship: '🚀 Entrepreneurship',
-    competitions:   '🏆 Competitions & Hackathons',
-    patents:        '📜 Patents',
+    competitions: '🏆 Competitions & Hackathons',
+    patents: '📜 Patents',
     certifications: '🎓 Certifications / Leadership',
   };
 
@@ -48,7 +48,7 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, categor
                 <td style="background:linear-gradient(135deg,#1a73e8 0%,#0d47a1 100%);padding:36px 32px;text-align:center;">
                   <div style="display:inline-block;background:white;border-radius:12px;padding:8px 16px;margin-bottom:16px;">
                     <span style="font-size:24px;font-weight:700;letter-spacing:-1px;">
-                      <span style="color:#ea4335">C</span><span style="color:#fbbc04">u</span><span style="color:#34a853">S</span><span style="color:#ea4335">O</span><span style="color:#fbbc04">C</span>
+                      <span style="color:#ea4335">O</span><span style="color:#fbbc04">A</span><span style="color:#34a853">A</span>
                     </span>
                   </div>
                   <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;line-height:1.3;">Application Received! 🎉</h1>
@@ -178,10 +178,10 @@ const register = async (req, res) => {
 
     // ── 4. Insert registration ────────────────────────────────────────────────
     await Registration.create({
-      name:       name.trim(),
-      email:      normalizedEmail,
-      uid:        uid.trim(),
-      cluster:    cluster.trim(),
+      name: name.trim(),
+      email: normalizedEmail,
+      uid: uid.trim(),
+      cluster: cluster.trim(),
       department: department.trim(),
       categories,
     });
