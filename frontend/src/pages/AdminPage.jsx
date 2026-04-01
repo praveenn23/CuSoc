@@ -90,7 +90,7 @@ function SendTicketsModal({ totalCount, onConfirm, onCancel, loading }) {
 }
 
 // ── View Details Modal ──
-function ViewDetailsModal({ registration, onCancel, onUpdateStatus }) {
+function ViewDetailsModal({ registration, onCancel, onUpdateStatus, onUpdateCategoryStatus }) {
     if (!registration) return null;
 
     return (
@@ -148,8 +148,28 @@ function ViewDetailsModal({ registration, onCancel, onUpdateStatus }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                             {registration.categories.map((cat, i) => (
                                 <div key={i} style={{ border: '1px solid #e8eaed', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                                    <div style={{ background: '#f1f3f4', padding: '12px 16px', fontWeight: 600, borderBottom: '1px solid #e8eaed', textTransform: 'capitalize', color: '#202124' }}>
-                                        {cat.type}
+                                    <div style={{ background: '#f1f3f4', padding: '12px 16px', fontWeight: 600, borderBottom: '1px solid #e8eaed', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#202124' }}>
+                                        <span style={{ textTransform: 'capitalize' }}>{cat.type}</span>
+                                        <select
+                                            className={`admin-select-sm evaluation-select`}
+                                            value={cat.status || 'Pending'}
+                                            onChange={(e) => onUpdateCategoryStatus(registration.id, i, e.target.value)}
+                                            style={{
+                                                fontSize: '13px',
+                                                padding: '4px 8px',
+                                                borderRadius: '6px',
+                                                border: '1px solid #dadce0',
+                                                background: cat.status === 'Approved' ? '#e6f4ea' : cat.status === 'Rejected' ? '#fce8e6' : '#fff',
+                                                color: cat.status === 'Approved' ? '#137333' : cat.status === 'Rejected' ? '#c5221f' : '#202124',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                outline: 'none'
+                                            }}
+                                        >
+                                            <option value="Pending">🕒 Pending</option>
+                                            <option value="Approved">✅ Approved</option>
+                                            <option value="Rejected">❌ Rejected</option>
+                                        </select>
                                     </div>
                                     <div style={{ padding: '20px 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px 20px' }}>
                                         {Object.entries(cat.data || {}).map(([key, val]) => {
@@ -782,7 +802,10 @@ export default function AdminPage({ onLogout }) {
         else { setSortKey(key); setSortAsc(true); }
     };
 
-    const filtered = regs
+    const approvedRegs = regs.filter(r => r.evaluation_status === 'Approved' || (Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved')));
+    const baseRegs = activeTab === 'approved' ? approvedRegs : regs;
+
+    const filtered = baseRegs
         .filter((r) => {
             const q = search.toLowerCase();
             const textMatch = (
@@ -885,6 +908,25 @@ export default function AdminPage({ onLogout }) {
         }
     };
 
+    const handleCategoryEvaluationUpdate = async (regId, categoryIndex, status) => {
+        try {
+            const { data } = await updateEvaluation(regId, status, '', categoryIndex);
+            if (data.success) {
+                const updateReg = (r) => {
+                    if (r.id !== regId) return r;
+                    const newCats = [...r.categories];
+                    newCats[categoryIndex] = { ...newCats[categoryIndex], status };
+                    return { ...r, categories: newCats };
+                };
+                setRegs((prev) => prev.map(updateReg));
+                setViewTarget((prev) => prev ? updateReg(prev) : prev);
+            }
+        } catch (err) {
+            console.error('Failed to update category evaluation:', err);
+            alert('Failed to update category evaluation status');
+        }
+    };
+
     // ── Sort icon helper ───────────────────────────────────────────────────────
     const SortIcon = ({ col }) => sortKey === col
         ? (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)
@@ -970,8 +1012,14 @@ export default function AdminPage({ onLogout }) {
                         onClick={() => setActiveTab('registrations')}
                         id="tab-registrations"
                     >
-                        <Users size={16} /> Registrations
-                        <span className="admin-tab-badge">{stats.totalRegistrations}</span>
+                        <Users size={16} /> All ({stats.totalRegistrations})
+                    </button>
+                    <button
+                        className={`admin-tab ${activeTab === 'approved' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('approved')}
+                        id="tab-approved"
+                    >
+                        <CheckCircle size={16} /> Approved ({approvedRegs.length})
                     </button>
                     <button
                         className={`admin-tab ${activeTab === 'attendance' ? 'active' : ''}`}
@@ -992,8 +1040,8 @@ export default function AdminPage({ onLogout }) {
                     </button>
                 </div>
 
-                {/* ── REGISTRATIONS TAB ── */}
-                {activeTab === 'registrations' && (
+                {/* ── REGISTRATIONS & APPROVED TAB ── */}
+                {(activeTab === 'registrations' || activeTab === 'approved') && (
                     <div className="admin-card card">
                         {/* Toolbar */}
                         <div className="admin-table-toolbar">
@@ -1051,28 +1099,30 @@ export default function AdminPage({ onLogout }) {
                                     className={`attend-pill ${attendFilter === 'all' ? 'active' : ''}`}
                                     onClick={() => setAttendFilter('all')}
                                     id="filter-all"
-                                >All ({stats?.totalRegistrations ?? regs.length})</button>
+                                >All ({baseRegs.length})</button>
                                 <button
                                     className={`attend-pill attend-pill-present ${attendFilter === 'present' ? 'active' : ''}`}
                                     onClick={() => setAttendFilter('present')}
                                     id="filter-present"
-                                >✅ Present ({displayAttendedCount})</button>
+                                >✅ Present ({baseRegs.filter(r => r.attended_at).length})</button>
                                 <button
                                     className={`attend-pill attend-pill-absent ${attendFilter === 'absent' ? 'active' : ''}`}
                                     onClick={() => setAttendFilter('absent')}
                                     id="filter-absent"
-                                >⬜ Absent ({(stats?.totalRegistrations ?? regs.length) - displayAttendedCount})</button>
+                                >⬜ Absent ({baseRegs.filter(r => !r.attended_at).length})</button>
                             </div>
-                            <button
-                                className="btn btn-sm"
-                                style={{ background: '#1a73e8', color: 'white', border: 'none', gap: 6 }}
-                                onClick={() => setShowSendTicketsModal(true)}
-                                disabled={regs.length === 0}
-                                id="btn-send-tickets"
-                                title={regs.length === 0 ? 'No registrations to send tickets to' : `Send tickets to ${stats?.totalRegistrations ?? regs.length} participants`}
-                            >
-                                <Mail size={14} /> Send All Tickets
-                            </button>
+                            {activeTab === 'approved' && (
+                                <button
+                                    className="btn btn-sm"
+                                    style={{ background: '#1a73e8', color: 'white', border: 'none', gap: 6 }}
+                                    onClick={() => setShowSendTicketsModal(true)}
+                                    disabled={baseRegs.length === 0}
+                                    id="btn-send-tickets"
+                                    title={baseRegs.length === 0 ? 'No approved registrations to send tickets to' : `Send tickets to ${baseRegs.length} approved participants`}
+                                >
+                                    <Mail size={14} /> Send Tickets
+                                </button>
+                            )}
                             <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
                                 <RefreshCw size={14} /> Refresh
                             </button>
@@ -1158,25 +1208,33 @@ export default function AdminPage({ onLogout }) {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <select
-                                                        className={`admin-select-sm evaluation-select evaluation-status-${(r.evaluation_status || 'Pending').toLowerCase()}`}
-                                                        value={r.evaluation_status || 'Pending'}
-                                                        onChange={(e) => handleEvaluationUpdate(r.id, e.target.value)}
-                                                        style={{
-                                                            fontSize: '12px',
-                                                            padding: '4px 8px',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid #dadce0',
-                                                            background: r.evaluation_status === 'Approved' ? '#e6f4ea' : r.evaluation_status === 'Rejected' ? '#fce8e6' : '#fff',
-                                                            color: r.evaluation_status === 'Approved' ? '#137333' : r.evaluation_status === 'Rejected' ? '#c5221f' : '#202124',
-                                                            fontWeight: 600,
-                                                            cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        <option value="Pending">🕒 Pending</option>
-                                                        <option value="Approved">✅ Approved</option>
-                                                        <option value="Rejected">❌ Rejected</option>
-                                                    </select>
+                                                    {Array.isArray(r.categories) && r.categories.map((cat, idx) => (
+                                                        <div key={idx} style={{ marginBottom: '6px' }}>
+                                                            <div style={{ fontSize: '11px', color: '#5f6368', marginBottom: '2px', textTransform: 'capitalize' }}>
+                                                                {cat.type}
+                                                            </div>
+                                                            <select
+                                                                className={`admin-select-sm evaluation-select evaluation-status-${(cat.status || 'Pending').toLowerCase()}`}
+                                                                value={cat.status || 'Pending'}
+                                                                onChange={(e) => handleCategoryEvaluationUpdate(r.id, idx, e.target.value)}
+                                                                style={{
+                                                                    fontSize: '11px',
+                                                                    padding: '4px 6px',
+                                                                    borderRadius: '4px',
+                                                                    border: '1px solid #dadce0',
+                                                                    background: cat.status === 'Approved' ? '#e6f4ea' : cat.status === 'Rejected' ? '#fce8e6' : '#fff',
+                                                                    color: cat.status === 'Approved' ? '#137333' : cat.status === 'Rejected' ? '#c5221f' : '#202124',
+                                                                    fontWeight: 600,
+                                                                    cursor: 'pointer',
+                                                                    width: '100%'
+                                                                }}
+                                                            >
+                                                                <option value="Pending">🕒 Pending</option>
+                                                                <option value="Approved">✅ Approved</option>
+                                                                <option value="Rejected">❌ Rejected</option>
+                                                            </select>
+                                                        </div>
+                                                    ))}
                                                 </td>
                                                 <td>
                                                     {r.attended_at ? (
@@ -1220,12 +1278,7 @@ export default function AdminPage({ onLogout }) {
                         <div className="admin-table-footer">
                             <div className="pagination-info">
                                 Showing <strong>{(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong>
-                                {filtered.length !== regs.length && <span> (filtered from {regs.length})</span>}
-                                {displayAttendedCount > 0 && (
-                                    <span style={{ marginLeft: 8, color: '#137333', fontWeight: 600 }}>
-                                        &bull; {displayAttendedCount} present
-                                    </span>
-                                )}
+                                {filtered.length !== baseRegs.length && <span> (filtered from {baseRegs.length})</span>}
                             </div>
 
                             {/* Pagination controls */}
@@ -1430,12 +1483,13 @@ export default function AdminPage({ onLogout }) {
                     registration={viewTarget}
                     onCancel={() => setViewTarget(null)}
                     onUpdateStatus={handleEvaluationUpdate}
+                    onUpdateCategoryStatus={handleCategoryEvaluationUpdate}
                 />
             )}
 
             {showSendTicketsModal && (
                 <SendTicketsModal
-                    totalCount={regs.length}
+                    totalCount={approvedRegs.length}
                     onConfirm={handleSendTickets}
                     onCancel={() => !sendingTickets && setShowSendTicketsModal(false)}
                     loading={sendingTickets}

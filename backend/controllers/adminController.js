@@ -155,19 +155,31 @@ const adminLogin = async (req, res) => {
 // ── POST /admin/send-tickets ─────────────────────────────────────────────────
 const sendTickets = async (req, res) => {
   try {
-    // Fetch registrations that have NOT been sent a ticket yet
-    const registrations = await Registration.find({ ticketSentAt: null })
+    // Fetch registrations that have NOT been sent a ticket yet AND are approved
+    const registrations = await Registration.find({ 
+      ticketSentAt: null,
+      $or: [
+        { evaluation_status: 'Approved' },
+        { 'categories.status': 'Approved' }
+      ]
+    })
       .sort({ createdAt: 1 })
       .limit(5000)
       .lean();
 
-    const totalCount = await Registration.countDocuments();
-    const alreadySent = totalCount - registrations.length;
+    // Calculate how many APPROVED people already got their ticket
+    const totalApprovedCount = await Registration.countDocuments({
+      $or: [
+        { evaluation_status: 'Approved' },
+        { 'categories.status': 'Approved' }
+      ]
+    });
+    const alreadySent = totalApprovedCount - registrations.length;
 
     if (!registrations || registrations.length === 0) {
       return res.json({
         success: true,
-        message: `All ${totalCount} participants have already received their ticket emails. No new emails sent.`,
+        message: `All ${totalApprovedCount} approved participants have already received their ticket emails. No new emails sent.`,
         sent: 0, failed: 0, skipped: alreadySent,
       });
     }
@@ -193,6 +205,24 @@ const sendTickets = async (req, res) => {
           const ticketNo   = `EVT-${reg._id.toString().slice(-4).toUpperCase()}`;
           const department = reg.department || 'N/A';
 
+          const approvedCategories = Array.isArray(reg.categories)
+            ? reg.categories.filter(c => c.status === 'Approved' || reg.evaluation_status === 'Approved')
+            : [];
+          const approvedCategoryNames = approvedCategories.map(c => 
+            (c.type || '').charAt(0).toUpperCase() + (c.type || '').slice(1)
+          );
+
+          let selectedCategoryHtml = '';
+          if (approvedCategoryNames.length > 0) {
+            selectedCategoryHtml = `
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px;">
+                    <tr>
+                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">Selected For</td>
+                      <td style="font-size:14px;font-weight:700;color:#137333;">${approvedCategoryNames.join(', ')}</td>
+                    </tr>
+                  </table>`;
+          }
+
           const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -217,8 +247,8 @@ const sendTickets = async (req, res) => {
             <p style="margin:0;color:#1a73e8;font-size:15px;font-weight:600;">Dear ${reg.name},</p>
             <p style="margin:6px 0 0;color:#3c4043;font-size:14px;line-height:1.6;">
               Greetings from the Organizing Team!<br />
-              Thank you for registering for <strong>${event.title}</strong>.<br />
-              Your registration has been successfully confirmed.
+              Thank you for applying to <strong>${event.title}</strong>.<br />
+              We are pleased to inform you that your application has been <strong>approved</strong>!
             </p>
           </td>
         </tr>
@@ -256,6 +286,7 @@ const sendTickets = async (req, res) => {
                       <td style="font-size:14px;font-weight:500;color:#202124;">${reg.email}</td>
                     </tr>
                   </table>
+                  ${selectedCategoryHtml}
                 </td>
               </tr>
             </table>
@@ -482,4 +513,40 @@ const markAttendance = async (req, res) => {
   }
 };
 
-module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance };
+// ── PUT /admin/registrations/:id/evaluation ─────────────────────────────────
+const updateEvaluation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, categoryIndex } = req.body;
+
+    if (!id || !status) {
+      return res.status(400).json({ error: 'Missing id or status' });
+    }
+
+    const reg = await Registration.findById(id);
+    if (!reg) return res.status(404).json({ error: 'Registration not found' });
+
+    let updatePayload = {};
+
+    if (categoryIndex !== undefined && categoryIndex !== null) {
+      const idx = parseInt(categoryIndex, 10);
+      if (idx < 0 || idx >= reg.categories.length) {
+        return res.status(400).json({ error: 'Invalid category index' });
+      }
+      const categories = [...reg.categories];
+      categories[idx] = { ...categories[idx], status };
+      updatePayload = { categories };
+    } else {
+      updatePayload = { evaluation_status: status };
+    }
+
+    const updated = await Registration.findByIdAndUpdate(id, updatePayload, { new: true });
+
+    return res.json({ success: true, registration: updated });
+  } catch (err) {
+    console.error('updateEvaluation error:', err.message);
+    return res.status(500).json({ error: 'Failed to update evaluation' });
+  }
+};
+
+module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance, updateEvaluation };

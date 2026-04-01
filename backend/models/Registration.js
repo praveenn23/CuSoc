@@ -14,6 +14,7 @@ const registrationSchema = new mongoose.Schema(
     department:   { type: String, trim: true, default: null },
     type:         { type: String, default: null },
     categories:   { type: Array,  default: [] },
+    evaluation_status: { type: String, default: 'Pending' },
     ticketSentAt: { type: Date,   default: null },
     attendedAt:   { type: Date,   default: null },
   },
