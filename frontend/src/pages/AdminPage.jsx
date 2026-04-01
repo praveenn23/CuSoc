@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Users, Ticket, BarChart2, LogOut, Trash2, RefreshCw,
     Search, Edit3, Save, X, ChevronDown, ChevronUp, AlertTriangle,
-    CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash, Mail,
+    CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash, Mail, Download,
     ScanLine, UserCheck, UserPlus, Building2, Link, Palette,
 } from 'lucide-react';
 import {
@@ -61,12 +61,12 @@ function SendTicketsModal({ totalCount, onConfirm, onCancel, loading }) {
                 </div>
                 <h3>Send Ticket Emails?</h3>
                 <p>
-                    This will send a <strong>formal ticket confirmation email</strong> to all{' '}
-                    <strong>{totalCount} registered participants</strong>.
+                    This will send a <strong>formal ticket confirmation email</strong> to the selected pool of{' '}
+                    <strong>{totalCount} approved participants</strong>.
                     Each email includes their unique ticket number, event venue, timings, and instructions.
                 </p>
                 <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                    ⚠️ Participants who are already emailed will receive another copy. Confirm only once.
+                    ✅ The system will automatically skip participants who have already received a ticket. You can safely trigger this multiple times.
                 </p>
                 <div className="admin-confirm-actions">
                     <button className="btn btn-secondary" onClick={onCancel} disabled={loading} id="btn-cancel-send-tickets">
@@ -927,6 +927,40 @@ export default function AdminPage({ onLogout }) {
         }
     };
 
+    const handleExportCSV = () => {
+        const headers = ['Name', 'Email', 'UID/EID', 'Department', 'Cluster', 'Categories Applied', 'Registered At', 'Ticket Sent', 'Overall Status', 'Attendance'];
+
+        const rows = filtered.map(r => {
+            const categoriesStr = Array.isArray(r.categories)
+                ? r.categories.map(c => `${c.type} (${c.status || 'Pending'})`).join('; ')
+                : '';
+            const attended = r.attended_at ? 'Present' : 'Absent';
+            const ticket = r.ticket_sent_at ? 'Yes' : 'No';
+            return [
+                `"${(r.name || '').replace(/"/g, '""')}"`,
+                `"${(r.email || '').replace(/"/g, '""')}"`,
+                `"${(r.uid || '').replace(/"/g, '""')}"`,
+                `"${(r.department || '').replace(/"/g, '""')}"`,
+                `"${(r.cluster || '').replace(/"/g, '""')}"`,
+                `"${categoriesStr.replace(/"/g, '""')}"`,
+                `"${new Date(r.created_at).toLocaleString()}"`,
+                `"${ticket}"`,
+                `"${(r.evaluation_status || 'Pending').replace(/"/g, '""')}"`,
+                `"${attended}"`
+            ].join(',');
+        });
+
+        const csvString = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Approved_Participants_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     // ── Sort icon helper ───────────────────────────────────────────────────────
     const SortIcon = ({ col }) => sortKey === col
         ? (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)
@@ -1032,6 +1066,13 @@ export default function AdminPage({ onLogout }) {
                         )}
                     </button>
                     <button
+                        className={`admin-tab ${activeTab === 'analytics' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('analytics')}
+                        id="tab-analytics"
+                    >
+                        <BarChart2 size={16} /> Insights
+                    </button>
+                    <button
                         className={`admin-tab ${activeTab === 'event' ? 'active' : ''}`}
                         onClick={() => setActiveTab('event')}
                         id="tab-event"
@@ -1112,16 +1153,28 @@ export default function AdminPage({ onLogout }) {
                                 >⬜ Absent ({baseRegs.filter(r => !r.attended_at).length})</button>
                             </div>
                             {activeTab === 'approved' && (
-                                <button
-                                    className="btn btn-sm"
-                                    style={{ background: '#1a73e8', color: 'white', border: 'none', gap: 6 }}
-                                    onClick={() => setShowSendTicketsModal(true)}
-                                    disabled={baseRegs.length === 0}
-                                    id="btn-send-tickets"
-                                    title={baseRegs.length === 0 ? 'No approved registrations to send tickets to' : `Send tickets to ${baseRegs.length} approved participants`}
-                                >
-                                    <Mail size={14} /> Send Tickets
-                                </button>
+                                <>
+                                    <button
+                                        className="btn btn-sm"
+                                        style={{ background: '#0f9d58', color: 'white', border: 'none', gap: 6 }}
+                                        onClick={handleExportCSV}
+                                        disabled={filtered.length === 0}
+                                        id="btn-export-csv"
+                                        title={filtered.length === 0 ? 'No data to export' : `Export ${filtered.length} visible rows to Excel (CSV)`}
+                                    >
+                                        <Download size={14} /> Export CSV
+                                    </button>
+                                    <button
+                                        className="btn btn-sm"
+                                        style={{ background: '#1a73e8', color: 'white', border: 'none', gap: 6 }}
+                                        onClick={() => setShowSendTicketsModal(true)}
+                                        disabled={baseRegs.length === 0}
+                                        id="btn-send-tickets"
+                                        title={baseRegs.length === 0 ? 'No approved registrations to send tickets to' : `Send tickets to ${baseRegs.length} approved participants`}
+                                    >
+                                        <Mail size={14} /> Send Tickets
+                                    </button>
+                                </>
                             )}
                             <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
                                 <RefreshCw size={14} /> Refresh
@@ -1452,6 +1505,74 @@ export default function AdminPage({ onLogout }) {
                                 <p>No scans yet. Enter a ticket code above to begin.</p>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* ── ANALYTICS TAB ── */}
+                {activeTab === 'analytics' && (
+                    <div className="admin-card card">
+                        <div className="admin-table-toolbar" style={{ borderBottom: '1px solid #e8eaed', paddingBottom: 16 }}>
+                            <h2 style={{ fontSize: 18, margin: 0, fontWeight: 600, color: '#202124', display: 'flex', alignItems: 'center' }}>
+                                <BarChart2 size={20} style={{ marginRight: 8 }} /> Detailed Insights
+                            </h2>
+                        </div>
+                        <div style={{ padding: '0 24px 24px 24px' }}>
+                            <p style={{ color: '#5f6368', fontSize: 14, margin: '16px 0 24px 0' }}>Overview of category registrations cross-tabulated by cluster.</p>
+                            
+                            {(() => {
+                                const catIds = allCategories.map(c => c.id);
+                                const clustersToShow = uniqueClusters.length > 0 ? uniqueClusters : ['N/A'];
+                                const tableData = clustersToShow.map(cluster => {
+                                    const cRegs = regs.filter(r => (r.cluster || 'N/A') === cluster);
+                                    const row = { Cluster: cluster };
+                                    catIds.forEach(catId => {
+                                        const count = cRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.type === catId)).length;
+                                        row[catId] = count;
+                                    });
+                                    row.TotalParticipants = cRegs.length;
+                                    return row;
+                                });
+
+                                const grandTotal = { Cluster: 'Grand Total', TotalParticipants: regs.length };
+                                catIds.forEach(catId => {
+                                    grandTotal[catId] = regs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.type === catId)).length;
+                                });
+
+                                return (
+                                    <div className="admin-table-wrap">
+                                        <table className="admin-table">
+                                            <thead style={{ background: '#f8f9fa' }}>
+                                                <tr>
+                                                    <th style={{ width: 250 }}>Cluster Name</th>
+                                                    {allCategories.map(c => <th key={c.id} style={{ textAlign: 'center' }}>{c.label}</th>)}
+                                                    <th style={{ textAlign: 'center', borderLeft: '2px solid #e8eaed', fontWeight: 700, minWidth: 120 }}>Total Persons</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {tableData.map(row => (
+                                                    <tr key={row.Cluster} className="admin-row">
+                                                        <td style={{ fontWeight: 600, color: '#3c4043' }}>{row.Cluster}</td>
+                                                        {catIds.map(c => (
+                                                            <td key={c} style={{ textAlign: 'center', color: row[c] > 0 ? '#1a73e8' : '#bdc1c6', fontWeight: row[c] > 0 ? 600 : 400 }}>
+                                                                {row[c] > 0 ? row[c] : '-'}
+                                                            </td>
+                                                        ))}
+                                                        <td style={{ textAlign: 'center', borderLeft: '2px solid #e8eaed', fontWeight: 600, color: '#3c4043' }}>{row.TotalParticipants}</td>
+                                                    </tr>
+                                                ))}
+                                                <tr style={{ background: '#e8f0fe', borderTop: '2px solid #1a73e8' }}>
+                                                    <td style={{ fontWeight: 700, color: '#1a73e8', padding: '16px' }}>Grand Total</td>
+                                                    {catIds.map(c => (
+                                                        <td key={c} style={{ textAlign: 'center', fontWeight: 700, color: '#1a73e8' }}>{grandTotal[c]}</td>
+                                                    ))}
+                                                    <td style={{ textAlign: 'center', borderLeft: '2px solid #1a73e8', fontWeight: 800, color: '#1a73e8', fontSize: 16 }}>{grandTotal.TotalParticipants}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                );
+                            })()}
+                        </div>
                     </div>
                 )}
 
