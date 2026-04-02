@@ -114,27 +114,8 @@ function ViewDetailsModal({ registration, onCancel, onUpdateStatus, onUpdateCate
                             <Building2 size={13} /> {registration.department} {registration.cluster ? `(${registration.cluster})` : ''}
                         </div>
                         <div style={{ color: '#5f6368', fontSize: 14, marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{ fontWeight: 600 }}>Evaluation:</div>
-                            <select
-                                className={`admin-select-sm evaluation-select`}
-                                value={registration.evaluation_status || 'Pending'}
-                                onChange={(e) => onUpdateStatus(registration.id, e.target.value)}
-                                style={{
-                                    fontSize: '13px',
-                                    padding: '6px 12px',
-                                    borderRadius: '8px',
-                                    border: '1px solid #dadce0',
-                                    background: registration.evaluation_status === 'Approved' ? '#e6f4ea' : registration.evaluation_status === 'Rejected' ? '#fce8e6' : '#fff',
-                                    color: registration.evaluation_status === 'Approved' ? '#137333' : registration.evaluation_status === 'Rejected' ? '#c5221f' : '#202124',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    outline: 'none'
-                                }}
-                            >
-                                <option value="Pending">🕒 Pending Review</option>
-                                <option value="Approved">✅ Approved</option>
-                                <option value="Rejected">❌ Rejected</option>
-                            </select>
+                            <div style={{ fontWeight: 600 }}>Evaluation Mode:</div>
+                            <span style={{ fontSize: 13, background: '#f1f3f4', padding: '4px 8px', borderRadius: 6, border: '1px solid #dadce0', color: '#5f6368' }}>Per-Category Enabled</span>
                         </div>
                     </div>
 
@@ -152,7 +133,7 @@ function ViewDetailsModal({ registration, onCancel, onUpdateStatus, onUpdateCate
                                         <span style={{ textTransform: 'capitalize' }}>{cat.type}</span>
                                         <select
                                             className={`admin-select-sm evaluation-select`}
-                                            value={cat.status || 'Pending'}
+                                            value={cat.status || registration.evaluation_status || 'Pending'}
                                             onChange={(e) => onUpdateCategoryStatus(registration.id, i, e.target.value)}
                                             style={{
                                                 fontSize: '13px',
@@ -802,7 +783,12 @@ export default function AdminPage({ onLogout }) {
         else { setSortKey(key); setSortAsc(true); }
     };
 
-    const approvedRegs = regs.filter(r => r.evaluation_status === 'Approved' || (Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved')));
+    const approvedRegs = regs.filter(r => {
+        return Array.isArray(r.categories) && r.categories.some(c => {
+            const effectiveStatus = c.status || r.evaluation_status || 'Pending';
+            return effectiveStatus === 'Approved';
+        });
+    });
     const baseRegs = activeTab === 'approved' ? approvedRegs : regs;
 
     const filtered = baseRegs
@@ -1267,8 +1253,8 @@ export default function AdminPage({ onLogout }) {
                                                                 {cat.type}
                                                             </div>
                                                             <select
-                                                                className={`admin-select-sm evaluation-select evaluation-status-${(cat.status || 'Pending').toLowerCase()}`}
-                                                                value={cat.status || 'Pending'}
+                                                                className={`admin-select-sm evaluation-select evaluation-status-${(cat.status || r.evaluation_status || 'Pending').toLowerCase()}`}
+                                                                value={cat.status || r.evaluation_status || 'Pending'}
                                                                 onChange={(e) => handleCategoryEvaluationUpdate(r.id, idx, e.target.value)}
                                                                 style={{
                                                                     fontSize: '11px',
