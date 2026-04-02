@@ -33,9 +33,9 @@ export default function SeatCounter({ totalSeats, bookedSeats, onRegister }) {
             </div>
 
             <div className="seat-counter-numbers">
-                <span className="seat-num seat-booked">
+                {/* <span className="seat-num seat-booked">
                     <strong>{bookedSeats}</strong> registered
-                </span>
+                </span> */}
                 {/* <span className="seat-num seat-total">
                     {totalSeats} total seats
                 </span> */}
