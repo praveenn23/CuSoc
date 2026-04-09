@@ -110,7 +110,6 @@ function FileInput({ id, accept, file, onChange, label, error }) {
                 </label>
                 <input id={id} type="file" accept={accept} className="rf-file-input" onChange={onChange} />
                 {file && <span className="rf-file-name">✓ {file.name} ({(file.size / 1024).toFixed(1)} KB)</span>}
-                {error && <span className="rf-error"><AlertCircle size={12} />{error}</span>}
             </div>
             <span className="rf-file-limit-note">Note: Upload document under 200 KB</span>
         </div>
