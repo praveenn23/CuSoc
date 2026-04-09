@@ -347,6 +347,15 @@
     word-break: break-all;
 }
 
+.rf-file-limit-note {
+    font-size: 11px;
+    color: var(--red);
+    font-weight: 600;
+    display: block;
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
 
 /* ── Category Fields Container ───────────────────────────────── */
 .rf-cat-fields {

@@ -7,6 +7,8 @@ const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const CLUSTERS = ['Engineering', 'Management', 'Liberal Arts and Humanities', 'Science'];
+const MAX_FILE_SIZE = 200 * 1024; // 200 KB
+
 
 const DEPARTMENTS = [
     'Chemistry', 'Mathematics', 'Physics', 'Bio-Technology',
@@ -100,14 +102,17 @@ function Select({ value, onChange, options, placeholder, error }) {
 
 function FileInput({ id, accept, file, onChange, label, error }) {
     return (
-        <div className={`rf-file-box ${error ? 'rf-file-error' : ''}`}>
-            <label htmlFor={id} className="rf-file-label">
-                <Upload size={15} />
-                <span>{file ? file.name : label}</span>
-            </label>
-            <input id={id} type="file" accept={accept} className="rf-file-input" onChange={onChange} />
-            {file && <span className="rf-file-name">✓ {file.name}</span>}
-            {error && <span className="rf-error"><AlertCircle size={12} />{error}</span>}
+        <div className="rf-file-container">
+            <div className={`rf-file-box ${error ? 'rf-file-error' : ''}`}>
+                <label htmlFor={id} className="rf-file-label">
+                    <Upload size={15} />
+                    <span>{file ? file.name : label}</span>
+                </label>
+                <input id={id} type="file" accept={accept} className="rf-file-input" onChange={onChange} />
+                {file && <span className="rf-file-name">✓ {file.name} ({(file.size / 1024).toFixed(1)} KB)</span>}
+                {error && <span className="rf-error"><AlertCircle size={12} />{error}</span>}
+            </div>
+            <span className="rf-file-limit-note">Note: Upload document under 200 KB</span>
         </div>
     );
 }
@@ -597,6 +602,14 @@ function validateCategory(id, data) {
     }
     // Validate mentored-by fields for ALL categories
     validateMentorBy(data, e);
+
+    // Validate all file sizes
+    Object.keys(data).forEach(key => {
+        if (data[key] instanceof File && data[key].size > MAX_FILE_SIZE) {
+            e[key] = 'File size exceeds 200 KB limit';
+        }
+    });
+
     return e;
 }
 
@@ -652,6 +665,15 @@ export default function RegistrationForm({ email, otp, onSuccess }) {
 
     // ── Category field handler ────────────────────────────────────────────────
     const handleCatField = useCallback((catId, field, value) => {
+        if (value instanceof File && value.size > MAX_FILE_SIZE) {
+            setCatErrors(p => ({
+                ...p,
+                [catId]: { ...(p[catId] || {}), [field]: 'File size exceeds 200 KB limit' }
+            }));
+            // Clear the file from data if it's too big
+            setCatData(p => ({ ...p, [catId]: { ...(p[catId] || {}), [field]: null } }));
+            return;
+        }
         setCatData(p => ({ ...p, [catId]: { ...(p[catId] || {}), [field]: value } }));
         setCatErrors(p => ({ ...p, [catId]: { ...(p[catId] || {}), [field]: '' } }));
         setGlobalError('');
