@@ -42,11 +42,14 @@ export default function SeatCounter({ totalSeats, bookedSeats, onRegister }) {
             </div>
 
             <div className="seat-action">
-                {!isFull && onRegister && (
+                {/* {!isFull && onRegister && (
                     <button className="btn btn-primary btn-full" onClick={onRegister} id="btn-seat-register">
                         Register Now
                     </button>
-                )}
+                )} */}
+                <button className="btn btn-primary btn-full" id="btn-seat-register">
+                        Registration Full
+                    </button>
                 <a href="https://drive.google.com/file/d/1zCEvEQ3MstfdEraIVn77VF06ogkKN4LY/view?usp=sharing" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-full" id="btn-download-guidelines">
                     <FileText size={18} /> Download Guidelines
                 </a>
