@@ -706,7 +706,7 @@ export default function AdminPage({ onLogout }) {
     const uniqueDepts = [...new Set(regs.map(r => r.department).filter(Boolean))].sort();
     const allCategories = [
         { id: 'research', label: 'Research' },
-        { id: 'innovation', label: 'Innovators' },
+        { id: 'innovation', label: 'Global Professional Certification' },
         { id: 'entrepreneurship', label: 'Entrepreneurship' },
         { id: 'competitions', label: 'Competitions' },
         { id: 'patents', label: 'Patents' },
@@ -1505,7 +1505,7 @@ export default function AdminPage({ onLogout }) {
                         </div>
                         <div style={{ padding: '0 24px 24px 24px' }}>
                             <p style={{ color: '#5f6368', fontSize: 14, margin: '16px 0 24px 0' }}>Overview of category registrations cross-tabulated by cluster.</p>
-                            
+
                             {(() => {
                                 const catIds = allCategories.map(c => c.id);
                                 const clustersToShow = uniqueClusters.length > 0 ? uniqueClusters : ['N/A'];
