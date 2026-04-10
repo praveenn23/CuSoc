@@ -705,13 +705,13 @@ export default function AdminPage({ onLogout }) {
     const uniqueClusters = [...new Set(regs.map(r => r.cluster).filter(Boolean))].sort();
     const uniqueDepts = [...new Set(regs.map(r => r.department).filter(Boolean))].sort();
     const allCategories = [
-        { id: 'research', label: 'Research' },
-        { id: 'innovation', label: 'Global Professional Certification' },
-        { id: 'entrepreneurship', label: 'Entrepreneurship' },
-        { id: 'competitions', label: 'Competitions' },
-        { id: 'patents', label: 'Patents' },
-        { id: 'leadership', label: 'Leadership' },
-        { id: 'other', label: 'Govt Exams & Awards' },
+        { id: 'research', label: 'Research', icon: '🔬' },
+        { id: 'innovation', label: 'Global Certification', icon: '🎖️' },
+        { id: 'entrepreneurship', label: 'Entrepreneurship', icon: '🚀' },
+        { id: 'competitions', label: 'Competitions', icon: '🏆' },
+        { id: 'patents', label: 'Patents', icon: '📄' },
+        { id: 'leadership', label: 'Leadership', icon: '👥' },
+        { id: 'other', label: 'Exams & Awards', icon: '🏅' },
     ];
 
     const load = useCallback(async () => {
@@ -1097,8 +1097,11 @@ export default function AdminPage({ onLogout }) {
                                     onChange={(e) => setDeptFilter(e.target.value)}
                                     id="filter-dept"
                                 >
-                                    <option value="all">🏢 All Departments</option>
-                                    {uniqueDepts.map(d => <option key={d} value={d}>{d}</option>)}
+                                    <option value="all">🏢 All Departments ({baseRegs.length})</option>
+                                    {uniqueDepts.map(d => {
+                                        const count = baseRegs.filter(r => r.department === d).length;
+                                        return <option key={d} value={d}>{d} ({count})</option>;
+                                    })}
                                 </select>
 
                                 <select
@@ -1107,8 +1110,11 @@ export default function AdminPage({ onLogout }) {
                                     onChange={(e) => setClusterFilter(e.target.value)}
                                     id="filter-cluster"
                                 >
-                                    <option value="all">📍 All Clusters</option>
-                                    {uniqueClusters.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <option value="all">📍 All Clusters ({baseRegs.length})</option>
+                                    {uniqueClusters.map(c => {
+                                        const count = baseRegs.filter(r => r.cluster === c).length;
+                                        return <option key={c} value={c}>{c} ({count})</option>;
+                                    })}
                                 </select>
 
                                 <select
@@ -1117,8 +1123,11 @@ export default function AdminPage({ onLogout }) {
                                     onChange={(e) => setCatFilter(e.target.value)}
                                     id="filter-category"
                                 >
-                                    <option value="all">🏆 All Categories</option>
-                                    {allCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                    <option value="all">🏆 All Categories ({baseRegs.length})</option>
+                                    {allCategories.map(c => {
+                                        const count = baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(cat => cat.type === c.id)).length;
+                                        return <option key={c.id} value={c.id}>{c.label} ({count})</option>;
+                                    })}
                                 </select>
                             </div>
 
@@ -1498,13 +1507,49 @@ export default function AdminPage({ onLogout }) {
                 {/* ── ANALYTICS TAB ── */}
                 {activeTab === 'analytics' && (
                     <div className="admin-card card">
-                        <div className="admin-table-toolbar" style={{ borderBottom: '1px solid #e8eaed', paddingBottom: 16 }}>
-                            <h2 style={{ fontSize: 18, margin: 0, fontWeight: 600, color: '#202124', display: 'flex', alignItems: 'center' }}>
-                                <BarChart2 size={20} style={{ marginRight: 8 }} /> Detailed Insights
-                            </h2>
-                        </div>
-                        <div style={{ padding: '0 24px 24px 24px' }}>
-                            <p style={{ color: '#5f6368', fontSize: 14, margin: '16px 0 24px 0' }}>Overview of category registrations cross-tabulated by cluster.</p>
+                        <div style={{ padding: '24px' }}>
+                            <div className="analytics-summary-title">
+                                <BarChart2 size={16} /> Category Application Insights
+                            </div>
+
+                            {(() => {
+                                const categoryStats = allCategories.map(cat => ({
+                                    ...cat,
+                                    count: regs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.type === cat.id)).length
+                                }));
+                                const totalCategoryApplications = categoryStats.reduce((sum, c) => sum + c.count, 0);
+
+                                return (
+                                    <div className="category-stats-grid">
+                                        <div className="category-stat-card total-apps-card" style={{ cursor: 'default' }}>
+                                            <div className="category-stat-header">
+                                                <div className="category-stat-icon-wrap">📊</div>
+                                                <div className="category-stat-value">{totalCategoryApplications}</div>
+                                            </div>
+                                            <div className="category-stat-label">Total Nominations</div>
+                                            <div className="category-stat-subtext">Sum of categories shown below</div>
+                                        </div>
+
+                                        {categoryStats.map(cat => (
+                                            <div key={cat.id} className="category-stat-card">
+                                                <div className="category-stat-header">
+                                                    <div className="category-stat-icon-wrap">{cat.icon}</div>
+                                                    <div className="category-stat-value">{cat.count}</div>
+                                                </div>
+                                                <div className="category-stat-label">{cat.label}</div>
+                                                <div className="category-stat-subtext">Registrations</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
+
+                            <div className="admin-table-toolbar" style={{ borderBottom: '1px solid #e8eaed', paddingBottom: 16, paddingLeft: 0, paddingRight: 0 }}>
+                                <h2 style={{ fontSize: 18, margin: 0, fontWeight: 600, color: '#202124', display: 'flex', alignItems: 'center' }}>
+                                    <BarChart2 size={20} style={{ marginRight: 8 }} /> Cluster Cross-Tabulation
+                                </h2>
+                            </div>
+                            <p style={{ color: '#5f6368', fontSize: 14, margin: '16px 0 24px 0' }}>Detailed breakdown of category registrations across different student clusters.</p>
 
                             {(() => {
                                 const catIds = allCategories.map(c => c.id);
