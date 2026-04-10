@@ -22,7 +22,8 @@ const sendConfirmationEmail = async ({ name, email, cluster, department, categor
     entrepreneurship: '🚀 Entrepreneurship',
     competitions: '🏆 Competitions & Hackathons',
     patents: '📜 Patents',
-    certifications: '🎓 Certifications / Leadership',
+    leadership: '🎓 Leadership',
+    other: '✨ Govt Exams & Awards',
   };
 
   const catListHtml = categories.map(c =>
