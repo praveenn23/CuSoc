@@ -710,7 +710,8 @@ export default function AdminPage({ onLogout }) {
         { id: 'entrepreneurship', label: 'Entrepreneurship' },
         { id: 'competitions', label: 'Competitions' },
         { id: 'patents', label: 'Patents' },
-        { id: 'certifications', label: 'Leadership' },
+        { id: 'leadership', label: 'Leadership' },
+        { id: 'other', label: 'Govt Exams & Awards' },
     ];
 
     const load = useCallback(async () => {
