@@ -17,9 +17,9 @@ export default function Navbar({ onRegister, hasSpeakers }) {
                 <nav className="navbar-links" aria-label="Page navigation">
                     <a href="#about">About</a>
                     {hasSpeakers && <a href="#speakers">Speakers</a>}
-                    {/* <button className="btn btn-primary btn-sm" onClick={onRegister}>
+                    <button className="btn btn-primary btn-sm" onClick={onRegister}>
                         Register Now
-                    </button> */}
+                    </button>
                 </nav>
             </div>
         </header>
