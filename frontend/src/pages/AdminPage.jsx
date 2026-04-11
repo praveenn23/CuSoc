@@ -938,7 +938,7 @@ export default function AdminPage({ onLogout }) {
         const headers = [
             'Name', 'Email', 'UID/EID', 'Department', 'Cluster', 
             'Category Type', 'Category Status', 'Category Details',
-            'Registered At', 'Ticket Sent', 'Overall Status', 'Award', 'Attendance'
+            'Registered At', 'Ticket Sent', 'Overall Status', 'Award / Grant Type', 'Attendance'
         ];
 
         const rows = [];
@@ -952,6 +952,11 @@ export default function AdminPage({ onLogout }) {
                             return `${niceK}: ${v}`;
                         }).join('; ');
 
+                    // Format award string for CSV readability
+                    const awardVal = (cat.award || 'None')
+                        .replace(/\+/g, ' + ')
+                        .replace(/\b\w/g, l => l.toUpperCase());
+
                     rows.push([
                         `"${(r.name || '').replace(/"/g, '""')}"`,
                         `"${(r.email || '').replace(/"/g, '""')}"`,
@@ -964,7 +969,7 @@ export default function AdminPage({ onLogout }) {
                         `"${new Date(r.created_at).toLocaleString()}"`,
                         `"${r.ticket_sent_at ? 'Yes' : 'No'}"`,
                         `"${(r.evaluation_status || 'Pending').replace(/"/g, '""')}"`,
-                        `"${(cat.award || 'None').replace(/"/g, '""')}"`,
+                        `"${awardVal.replace(/"/g, '""')}"`,
                         `"${r.attended_at ? 'Present' : 'Absent'}"`
                     ].join(','));
                 });
