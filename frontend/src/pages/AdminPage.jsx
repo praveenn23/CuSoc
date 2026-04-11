@@ -1378,7 +1378,7 @@ export default function AdminPage({ onLogout }) {
                                                                 <option value="medal">Medal</option>
                                                                 <option value="badge">Badge</option>
                                                                 <option value="trophy">Trophy</option>
-                                                                <option value="certificate+momento">Certificate + Momento</option>
+                                                                <option value="momento+certificate">Momento + Certificate</option>
                                                                 <option value="medal+certificate">Medal + Certificate</option>
                                                                 <option value="badge+certificate">Badge + Certificate</option>
                                                                 <option value="trophy+certificate">Trophy + Certificate</option>
