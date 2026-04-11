@@ -3,12 +3,12 @@ import {
     Users, Ticket, BarChart2, LogOut, Trash2, RefreshCw,
     Search, Edit3, Save, X, ChevronDown, ChevronUp, AlertTriangle,
     CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash, Mail, Download,
-    ScanLine, UserCheck, UserPlus, Building2, Link, Palette,
+    ScanLine, UserCheck, UserPlus, Building2, Link, Palette, Database,
 } from 'lucide-react';
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
     fetchAdminEvent, updateAdminEvent, sendTicketEmails, markAttendance,
-    updateEvaluation,
+    updateEvaluation, updateAward,
 } from '../services/adminApi';
 import './AdminPage.css';
 
@@ -810,6 +810,7 @@ export default function AdminPage({ onLogout }) {
             const clusterMatch = clusterFilter === 'all' ? true : r.cluster === clusterFilter;
             const deptMatch = deptFilter === 'all' ? true : r.department === deptFilter;
             const catMatch = catFilter === 'all' ? true :
+                catFilter === 'misc' ? (Array.isArray(r.categories) && r.categories.some(c => !allCategories.some(ac => ac.id === c.type))) :
                 (Array.isArray(r.categories) && r.categories.some(c => c.type === catFilter));
 
             return textMatch && attendMatch && clusterMatch && deptMatch && catMatch;
@@ -914,27 +915,74 @@ export default function AdminPage({ onLogout }) {
         }
     };
 
-    const handleExportCSV = () => {
-        const headers = ['Name', 'Email', 'UID/EID', 'Department', 'Cluster', 'Categories Applied', 'Registered At', 'Ticket Sent', 'Overall Status', 'Attendance'];
+    const handleCategoryAwardUpdate = async (regId, categoryIndex, award) => {
+        try {
+            const { data } = await updateAward(regId, award, categoryIndex);
+            if (data.success) {
+                const updateReg = (r) => {
+                    if (r.id !== regId) return r;
+                    const newCats = [...r.categories];
+                    newCats[categoryIndex] = { ...newCats[categoryIndex], award };
+                    return { ...r, categories: newCats };
+                };
+                setRegs((prev) => prev.map(updateReg));
+                setViewTarget((prev) => prev ? updateReg(prev) : prev);
+            }
+        } catch (err) {
+            console.error('Failed to update award:', err);
+            alert('Failed to update award selection');
+        }
+    };
 
-        const rows = filtered.map(r => {
-            const categoriesStr = Array.isArray(r.categories)
-                ? r.categories.map(c => `${c.type} (${c.status || 'Pending'})`).join('; ')
-                : '';
-            const attended = r.attended_at ? 'Present' : 'Absent';
-            const ticket = r.ticket_sent_at ? 'Yes' : 'No';
-            return [
-                `"${(r.name || '').replace(/"/g, '""')}"`,
-                `"${(r.email || '').replace(/"/g, '""')}"`,
-                `"${(r.uid || '').replace(/"/g, '""')}"`,
-                `"${(r.department || '').replace(/"/g, '""')}"`,
-                `"${(r.cluster || '').replace(/"/g, '""')}"`,
-                `"${categoriesStr.replace(/"/g, '""')}"`,
-                `"${new Date(r.created_at).toLocaleString()}"`,
-                `"${ticket}"`,
-                `"${(r.evaluation_status || 'Pending').replace(/"/g, '""')}"`,
-                `"${attended}"`
-            ].join(',');
+    const exportToCSV = (data, filename) => {
+        const headers = [
+            'Name', 'Email', 'UID/EID', 'Department', 'Cluster', 
+            'Category Type', 'Category Status', 'Category Details',
+            'Registered At', 'Ticket Sent', 'Overall Status', 'Award', 'Attendance'
+        ];
+
+        const rows = [];
+        data.forEach(r => {
+            if (Array.isArray(r.categories) && r.categories.length > 0) {
+                // Create a row for each category to include detailed data
+                r.categories.forEach(cat => {
+                    const detailsStr = Object.entries(cat.data || {})
+                        .map(([k, v]) => {
+                            const niceK = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                            return `${niceK}: ${v}`;
+                        }).join('; ');
+
+                    rows.push([
+                        `"${(r.name || '').replace(/"/g, '""')}"`,
+                        `"${(r.email || '').replace(/"/g, '""')}"`,
+                        `"${(r.uid || '').replace(/"/g, '""')}"`,
+                        `"${(r.department || '').replace(/"/g, '""')}"`,
+                        `"${(r.cluster || '').replace(/"/g, '""')}"`,
+                        `"${(cat.type || '').charAt(0).toUpperCase() + (cat.type || '').slice(1)}"`,
+                        `"${(cat.status || r.evaluation_status || 'Pending').replace(/"/g, '""')}"`,
+                        `"${detailsStr.replace(/"/g, '""')}"`,
+                        `"${new Date(r.created_at).toLocaleString()}"`,
+                        `"${r.ticket_sent_at ? 'Yes' : 'No'}"`,
+                        `"${(r.evaluation_status || 'Pending').replace(/"/g, '""')}"`,
+                        `"${(cat.award || 'None').replace(/"/g, '""')}"`,
+                        `"${r.attended_at ? 'Present' : 'Absent'}"`
+                    ].join(','));
+                });
+            } else {
+                rows.push([
+                    `"${(r.name || '').replace(/"/g, '""')}"`,
+                    `"${(r.email || '').replace(/"/g, '""')}"`,
+                    `"${(r.uid || '').replace(/"/g, '""')}"`,
+                    `"${(r.department || '').replace(/"/g, '""')}"`,
+                    `"${(r.cluster || '').replace(/"/g, '""')}"`,
+                    '"—"', '"—"', '"—"',
+                    `"${new Date(r.created_at).toLocaleString()}"`,
+                    `"${r.ticket_sent_at ? 'Yes' : 'No'}"`,
+                    `"${(r.evaluation_status || 'Pending').replace(/"/g, '""')}"`,
+                    '"None"',
+                    `"${r.attended_at ? 'Present' : 'Absent'}"`
+                ].join(','));
+            }
         });
 
         const csvString = [headers.join(','), ...rows].join('\n');
@@ -942,11 +990,14 @@ export default function AdminPage({ onLogout }) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `Approved_Participants_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.setAttribute("download", `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
+
+    const handleExportCSV = () => exportToCSV(filtered, 'Filtered_Participants');
+    const handleExportAllCSV = () => exportToCSV(regs, 'All_Participants');
 
     // ── Sort icon helper ───────────────────────────────────────────────────────
     const SortIcon = ({ col }) => sortKey === col
@@ -1123,11 +1174,16 @@ export default function AdminPage({ onLogout }) {
                                     onChange={(e) => setCatFilter(e.target.value)}
                                     id="filter-category"
                                 >
-                                    <option value="all">🏆 All Categories ({baseRegs.length})</option>
+                                    <option value="all">🏆 All Categories ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.length : 0), 0)})</option>
                                     {allCategories.map(c => {
-                                        const count = baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(cat => cat.type === c.id)).length;
+                                        const count = baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => (cat.type || '').toLowerCase() === c.id.toLowerCase()).length : 0), 0);
                                         return <option key={c.id} value={c.id}>{c.label} ({count})</option>;
                                     })}
+                                    {(() => {
+                                        const catIds = allCategories.map(c => c.id);
+                                        const miscCount = baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => !catIds.includes(cat.type)).length : 0), 0);
+                                        return miscCount > 0 ? <option value="misc">❓ Miscellaneous ({miscCount})</option> : null;
+                                    })()}
                                 </select>
                             </div>
 
@@ -1148,18 +1204,28 @@ export default function AdminPage({ onLogout }) {
                                     id="filter-absent"
                                 >⬜ Absent ({baseRegs.filter(r => !r.attended_at).length})</button>
                             </div>
-                            {activeTab === 'approved' && (
-                                <>
-                                    <button
-                                        className="btn btn-sm"
-                                        style={{ background: '#0f9d58', color: 'white', border: 'none', gap: 6 }}
-                                        onClick={handleExportCSV}
-                                        disabled={filtered.length === 0}
-                                        id="btn-export-csv"
-                                        title={filtered.length === 0 ? 'No data to export' : `Export ${filtered.length} visible rows to Excel (CSV)`}
-                                    >
-                                        <Download size={14} /> Export CSV
-                                    </button>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <button
+                                    className="btn btn-sm"
+                                    style={{ background: '#0f9d58', color: 'white', border: 'none', gap: 6 }}
+                                    onClick={handleExportCSV}
+                                    disabled={filtered.length === 0}
+                                    id="btn-export-csv"
+                                    title={filtered.length === 0 ? 'No data to export' : `Export ${filtered.length} visible rows to Excel (CSV)`}
+                                >
+                                    <Download size={14} /> Export Filtered
+                                </button>
+                                <button
+                                    className="btn btn-sm"
+                                    style={{ background: '#34a853', color: 'white', border: 'none', gap: 6 }}
+                                    onClick={handleExportAllCSV}
+                                    disabled={regs.length === 0}
+                                    id="btn-export-all"
+                                    title={regs.length === 0 ? 'No registrations to export' : `Export all ${regs.length} registrations to Excel (CSV)`}
+                                >
+                                    <Database size={14} /> Export All
+                                </button>
+                                {activeTab === 'approved' && (
                                     <button
                                         className="btn btn-sm"
                                         style={{ background: '#1a73e8', color: 'white', border: 'none', gap: 6 }}
@@ -1170,8 +1236,8 @@ export default function AdminPage({ onLogout }) {
                                     >
                                         <Mail size={14} /> Send Tickets
                                     </button>
-                                </>
-                            )}
+                                )}
+                            </div>
                             <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
                                 <RefreshCw size={14} /> Refresh
                             </button>
@@ -1212,6 +1278,7 @@ export default function AdminPage({ onLogout }) {
                                             </th>
                                             <th>Ticket Sent</th>
                                             <th>Evaluation</th>
+                                            <th>Award / Grant</th>
                                             <th>Attendance</th>
                                             <th className="admin-th-action">Action</th>
                                         </tr>
@@ -1281,6 +1348,40 @@ export default function AdminPage({ onLogout }) {
                                                                 <option value="Pending">🕒 Pending</option>
                                                                 <option value="Approved">✅ Approved</option>
                                                                 <option value="Rejected">❌ Rejected</option>
+                                                            </select>
+                                                        </div>
+                                                    ))}
+                                                </td>
+                                                <td>
+                                                    {Array.isArray(r.categories) && r.categories.map((cat, idx) => (
+                                                        <div key={idx} style={{ marginBottom: '6px' }}>
+                                                            <div style={{ fontSize: '11px', color: '#5f6368', marginBottom: '2px', textTransform: 'capitalize' }}>
+                                                                {cat.type}
+                                                            </div>
+                                                            <select
+                                                                className="admin-select-sm"
+                                                                value={cat.award || ''}
+                                                                onChange={(e) => handleCategoryAwardUpdate(r.id, idx, e.target.value)}
+                                                                style={{
+                                                                    fontSize: '11px',
+                                                                    padding: '4px 6px',
+                                                                    borderRadius: '4px',
+                                                                    border: '1px solid #dadce0',
+                                                                    background: cat.award ? '#f8f9fa' : '#fff',
+                                                                    cursor: 'pointer',
+                                                                    width: '100.2%'
+                                                                }}
+                                                            >
+                                                                <option value="">— Select Award —</option>
+                                                                <option value="certificate">Certificate</option>
+                                                                <option value="momento">Momento</option>
+                                                                <option value="medal">Medal</option>
+                                                                <option value="badge">Badge</option>
+                                                                <option value="trophy">Trophy</option>
+                                                                <option value="certificate+momento">Certificate + Momento</option>
+                                                                <option value="medal+certificate">Medal + Certificate</option>
+                                                                <option value="badge+certificate">Badge + Certificate</option>
+                                                                <option value="trophy+certificate">Trophy + Certificate</option>
                                                             </select>
                                                         </div>
                                                     ))}
@@ -1513,11 +1614,16 @@ export default function AdminPage({ onLogout }) {
                             </div>
 
                             {(() => {
+                                const allCategoryEntries = regs.flatMap(r => Array.isArray(r.categories) ? r.categories : []);
+                                const totalCategoryApplications = allCategoryEntries.length;
+
                                 const categoryStats = allCategories.map(cat => ({
                                     ...cat,
-                                    count: regs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.type === cat.id)).length
+                                    count: allCategoryEntries.filter(c => (c.type || '').toLowerCase() === cat.id.toLowerCase()).length
                                 }));
-                                const totalCategoryApplications = categoryStats.reduce((sum, c) => sum + c.count, 0);
+
+                                const knownCount = categoryStats.reduce((s, c) => s + c.count, 0);
+                                const othersCount = totalCategoryApplications - knownCount;
 
                                 return (
                                     <div className="category-stats-grid">
@@ -1527,7 +1633,7 @@ export default function AdminPage({ onLogout }) {
                                                 <div className="category-stat-value">{totalCategoryApplications}</div>
                                             </div>
                                             <div className="category-stat-label">Total Nominations</div>
-                                            <div className="category-stat-subtext">Sum of categories shown below</div>
+                                            <div className="category-stat-subtext">Sum of all entries in system</div>
                                         </div>
 
                                         {categoryStats.map(cat => (
@@ -1540,6 +1646,30 @@ export default function AdminPage({ onLogout }) {
                                                 <div className="category-stat-subtext">Registrations</div>
                                             </div>
                                         ))}
+
+                                        {othersCount > 0 && (
+                                            <div 
+                                                className="category-stat-card" 
+                                                style={{ 
+                                                    opacity: 1, 
+                                                    border: '1.5px dashed #f29900', 
+                                                    background: '#fffbf2',
+                                                    cursor: 'pointer'
+                                                }}
+                                                onClick={() => {
+                                                    setCatFilter('misc');
+                                                    document.getElementById('filter-category')?.scrollIntoView({ behavior: 'smooth' });
+                                                }}
+                                                title="Click to view these entries"
+                                            >
+                                                <div className="category-stat-header">
+                                                    <div className="category-stat-icon-wrap" style={{ background: '#fef3e2' }}>❓</div>
+                                                    <div className="category-stat-value" style={{ color: '#ea8600' }}>{othersCount}</div>
+                                                </div>
+                                                <div className="category-stat-label">Misc / Other</div>
+                                                <div className="category-stat-subtext">Find uncategorized entries</div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })()}

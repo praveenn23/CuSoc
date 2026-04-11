@@ -11,6 +11,7 @@ const {
     sendTickets,
     markAttendance,
     updateEvaluation,
+    updateAward,
 } = require('../controllers/adminController');
 
 // ── No-cache middleware for ALL admin routes ─────────────────────────────────
@@ -37,5 +38,6 @@ router.put('/event', updateEvent);
 router.post('/send-tickets', sendTickets);
 router.post('/mark-attendance', markAttendance);
 router.put('/registrations/:id/evaluation', updateEvaluation);
+router.put('/registrations/:id/award', updateAward);
 
 module.exports = router;

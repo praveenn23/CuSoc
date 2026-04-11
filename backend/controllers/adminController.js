@@ -552,4 +552,37 @@ const updateEvaluation = async (req, res) => {
   }
 };
 
-module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance, updateEvaluation };
+// ── PUT /admin/registrations/:id/award ──────────────────────────────────────
+const updateAward = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { award, categoryIndex } = req.body;
+
+    if (!id) return res.status(400).json({ error: 'Missing id' });
+
+    const reg = await Registration.findById(id);
+    if (!reg) return res.status(404).json({ error: 'Registration not found' });
+
+    let updatePayload = {};
+
+    if (categoryIndex !== undefined && categoryIndex !== null) {
+      const idx = parseInt(categoryIndex, 10);
+      if (idx < 0 || idx >= reg.categories.length) {
+        return res.status(400).json({ error: 'Invalid category index' });
+      }
+      const categories = [...reg.categories];
+      categories[idx] = { ...categories[idx], award };
+      updatePayload = { categories };
+    } else {
+      updatePayload = { award };
+    }
+
+    const updated = await Registration.findByIdAndUpdate(id, updatePayload, { new: true });
+    return res.json({ success: true, registration: updated });
+  } catch (err) {
+    console.error('updateAward error:', err.message);
+    return res.status(500).json({ error: 'Failed to update award' });
+  }
+};
+
+module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance, updateEvaluation, updateAward };
