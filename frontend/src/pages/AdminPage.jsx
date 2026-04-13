@@ -1270,19 +1270,23 @@ export default function AdminPage({ onLogout }) {
                                             <th onClick={() => toggleSort('name')} className="sortable">
                                                 Name <SortIcon col="name" />
                                             </th>
-                                            <th onClick={() => toggleSort('email')} className="sortable">
-                                                Email <SortIcon col="email" />
-                                            </th>
+                                            {activeTab !== 'approved' && (
+                                                <th onClick={() => toggleSort('email')} className="sortable">
+                                                    Email <SortIcon col="email" />
+                                                </th>
+                                            )}
                                             <th onClick={() => toggleSort('uid')} className="sortable">
                                                 UID / EID <SortIcon col="uid" />
                                             </th>
                                             <th>Department & Cluster</th>
-                                            <th>Categories Applied</th>
-                                            <th onClick={() => toggleSort('created_at')} className="sortable">
-                                                Registered At <SortIcon col="created_at" />
-                                            </th>
+                                            <th>{activeTab === 'approved' ? 'Approved Categories' : 'Categories Applied'}</th>
+                                            {activeTab !== 'approved' && (
+                                                <th onClick={() => toggleSort('created_at')} className="sortable">
+                                                    Registered At <SortIcon col="created_at" />
+                                                </th>
+                                            )}
                                             <th>Ticket Sent</th>
-                                            <th>Evaluation</th>
+                                            {activeTab !== 'approved' && <th>Evaluation</th>}
                                             <th>Award / Grant</th>
                                             <th>Attendance</th>
                                             <th className="admin-th-action">Action</th>
@@ -1298,7 +1302,9 @@ export default function AdminPage({ onLogout }) {
                                                     </div>
                                                     <span>{r.name}</span>
                                                 </td>
-                                                <td className="admin-td-email">{r.email}</td>
+                                                {activeTab !== 'approved' && (
+                                                    <td className="admin-td-email">{r.email}</td>
+                                                )}
                                                 <td>{r.uid || <span className="text-muted">—</span>}</td>
                                                 <td>
                                                     {r.department || <span className="admin-td-empty">—</span>}
@@ -1308,15 +1314,21 @@ export default function AdminPage({ onLogout }) {
                                                     {Array.isArray(r.categories) && r.categories.length > 0 ? (
                                                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', maxWidth: '180px' }}>
                                                             {r.categories
-                                                                .filter(cat =>
-                                                                    catFilter === 'all' ? true :
-                                                                    catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
-                                                                    cat.type === catFilter
-                                                                )
+                                                                .filter(cat => {
+                                                                    const catFilterMatch =
+                                                                        catFilter === 'all' ? true :
+                                                                        catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
+                                                                        cat.type === catFilter;
+                                                                    const approvedMatch = activeTab === 'approved' ? cat.status === 'Approved' : true;
+                                                                    return catFilterMatch && approvedMatch;
+                                                                })
                                                                 .map((cat, idx) => (
                                                                 <span key={idx} style={{
-                                                                    padding: '2px 6px', background: '#f1f3f4', color: '#3c4043',
-                                                                    border: '1px solid #dadce0', borderRadius: '4px', fontSize: '11px', whiteSpace: 'nowrap'
+                                                                    padding: '2px 6px',
+                                                                    background: activeTab === 'approved' ? '#e6f4ea' : '#f1f3f4',
+                                                                    color: activeTab === 'approved' ? '#137333' : '#3c4043',
+                                                                    border: `1px solid ${activeTab === 'approved' ? '#ceead6' : '#dadce0'}`,
+                                                                    borderRadius: '4px', fontSize: '11px', whiteSpace: 'nowrap', fontWeight: activeTab === 'approved' ? 600 : 400
                                                                 }}>
                                                                     {(cat.type || '').charAt(0).toUpperCase() + (cat.type || '').slice(1)}
                                                                 </span>
@@ -1326,7 +1338,9 @@ export default function AdminPage({ onLogout }) {
                                                         <span className="text-muted">—</span>
                                                     )}
                                                 </td>
-                                                <td className="admin-td-date">{formatDate(r.created_at)}</td>
+                                                {activeTab !== 'approved' && (
+                                                    <td className="admin-td-date">{formatDate(r.created_at)}</td>
+                                                )}
                                                 <td>
                                                     {r.ticket_sent_at ? (
                                                         <span className="text-success" title={formatDate(r.ticket_sent_at)}>✅ Yes</span>
@@ -1334,50 +1348,55 @@ export default function AdminPage({ onLogout }) {
                                                         <span className="text-muted">❌ No</span>
                                                     )}
                                                 </td>
-                                                <td>
-                                                    {Array.isArray(r.categories) && r.categories
-                                                        .map((cat, idx) => ({ cat, idx }))  // preserve original index for updates
-                                                        .filter(({ cat }) =>
-                                                            catFilter === 'all' ? true :
-                                                            catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
-                                                            cat.type === catFilter
-                                                        )
-                                                        .map(({ cat, idx }) => (
-                                                        <div key={idx} style={{ marginBottom: '6px' }}>
-                                                            <div style={{ fontSize: '11px', color: '#5f6368', marginBottom: '2px', textTransform: 'capitalize' }}>
-                                                                {cat.type}
+                                                {activeTab !== 'approved' && (
+                                                    <td>
+                                                        {Array.isArray(r.categories) && r.categories
+                                                            .map((cat, idx) => ({ cat, idx }))
+                                                            .filter(({ cat }) =>
+                                                                catFilter === 'all' ? true :
+                                                                catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
+                                                                cat.type === catFilter
+                                                            )
+                                                            .map(({ cat, idx }) => (
+                                                            <div key={idx} style={{ marginBottom: '6px' }}>
+                                                                <div style={{ fontSize: '11px', color: '#5f6368', marginBottom: '2px', textTransform: 'capitalize' }}>
+                                                                    {cat.type}
+                                                                </div>
+                                                                <select
+                                                                    className={`admin-select-sm evaluation-select evaluation-status-${(cat.status || r.evaluation_status || 'Pending').toLowerCase()}`}
+                                                                    value={cat.status || r.evaluation_status || 'Pending'}
+                                                                    onChange={(e) => handleCategoryEvaluationUpdate(r.id, idx, e.target.value)}
+                                                                    style={{
+                                                                        fontSize: '11px',
+                                                                        padding: '4px 6px',
+                                                                        borderRadius: '4px',
+                                                                        border: '1px solid #dadce0',
+                                                                        background: cat.status === 'Approved' ? '#e6f4ea' : cat.status === 'Rejected' ? '#fce8e6' : '#fff',
+                                                                        color: cat.status === 'Approved' ? '#137333' : cat.status === 'Rejected' ? '#c5221f' : '#202124',
+                                                                        fontWeight: 600,
+                                                                        cursor: 'pointer',
+                                                                        width: '100%'
+                                                                    }}
+                                                                >
+                                                                    <option value="Pending">🕒 Pending</option>
+                                                                    <option value="Approved">✅ Approved</option>
+                                                                    <option value="Rejected">❌ Rejected</option>
+                                                                </select>
                                                             </div>
-                                                            <select
-                                                                className={`admin-select-sm evaluation-select evaluation-status-${(cat.status || r.evaluation_status || 'Pending').toLowerCase()}`}
-                                                                value={cat.status || r.evaluation_status || 'Pending'}
-                                                                onChange={(e) => handleCategoryEvaluationUpdate(r.id, idx, e.target.value)}
-                                                                style={{
-                                                                    fontSize: '11px',
-                                                                    padding: '4px 6px',
-                                                                    borderRadius: '4px',
-                                                                    border: '1px solid #dadce0',
-                                                                    background: cat.status === 'Approved' ? '#e6f4ea' : cat.status === 'Rejected' ? '#fce8e6' : '#fff',
-                                                                    color: cat.status === 'Approved' ? '#137333' : cat.status === 'Rejected' ? '#c5221f' : '#202124',
-                                                                    fontWeight: 600,
-                                                                    cursor: 'pointer',
-                                                                    width: '100%'
-                                                                }}
-                                                            >
-                                                                <option value="Pending">🕒 Pending</option>
-                                                                <option value="Approved">✅ Approved</option>
-                                                                <option value="Rejected">❌ Rejected</option>
-                                                            </select>
-                                                        </div>
-                                                    ))}
-                                                </td>
+                                                        ))}
+                                                    </td>
+                                                )}
                                                 <td>
                                                     {Array.isArray(r.categories) && r.categories
-                                                        .map((cat, idx) => ({ cat, idx }))  // preserve original index for updates
-                                                        .filter(({ cat }) =>
-                                                            catFilter === 'all' ? true :
-                                                            catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
-                                                            cat.type === catFilter
-                                                        )
+                                                        .map((cat, idx) => ({ cat, idx }))
+                                                        .filter(({ cat }) => {
+                                                            const catFilterMatch =
+                                                                catFilter === 'all' ? true :
+                                                                catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
+                                                                cat.type === catFilter;
+                                                            const approvedMatch = activeTab === 'approved' ? cat.status === 'Approved' : true;
+                                                            return catFilterMatch && approvedMatch;
+                                                        })
                                                         .map(({ cat, idx }) => (
                                                         <div key={idx} style={{ marginBottom: '6px' }}>
                                                             <div style={{ fontSize: '11px', color: '#5f6368', marginBottom: '2px', textTransform: 'capitalize' }}>
@@ -1433,14 +1452,16 @@ export default function AdminPage({ onLogout }) {
                                                         >
                                                             <AlignLeft size={14} /> View
                                                         </button>
-                                                        <button
-                                                            className="btn btn-danger btn-sm admin-delete-btn"
-                                                            onClick={() => setDeleteTarget({ id: r.id, name: r.name, email: r.email })}
-                                                            title={`Delete ${r.name}`}
-                                                            id={`btn-delete-${r.id}`}
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
+                                                        {activeTab !== 'approved' && (
+                                                            <button
+                                                                className="btn btn-danger btn-sm admin-delete-btn"
+                                                                onClick={() => setDeleteTarget({ id: r.id, name: r.name, email: r.email })}
+                                                                title={`Delete ${r.name}`}
+                                                                id={`btn-delete-${r.id}`}
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
