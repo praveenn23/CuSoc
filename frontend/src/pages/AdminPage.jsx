@@ -1307,7 +1307,13 @@ export default function AdminPage({ onLogout }) {
                                                 <td>
                                                     {Array.isArray(r.categories) && r.categories.length > 0 ? (
                                                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', maxWidth: '180px' }}>
-                                                            {r.categories.map((cat, idx) => (
+                                                            {r.categories
+                                                                .filter(cat =>
+                                                                    catFilter === 'all' ? true :
+                                                                    catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
+                                                                    cat.type === catFilter
+                                                                )
+                                                                .map((cat, idx) => (
                                                                 <span key={idx} style={{
                                                                     padding: '2px 6px', background: '#f1f3f4', color: '#3c4043',
                                                                     border: '1px solid #dadce0', borderRadius: '4px', fontSize: '11px', whiteSpace: 'nowrap'
@@ -1329,7 +1335,14 @@ export default function AdminPage({ onLogout }) {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    {Array.isArray(r.categories) && r.categories.map((cat, idx) => (
+                                                    {Array.isArray(r.categories) && r.categories
+                                                        .map((cat, idx) => ({ cat, idx }))  // preserve original index for updates
+                                                        .filter(({ cat }) =>
+                                                            catFilter === 'all' ? true :
+                                                            catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
+                                                            cat.type === catFilter
+                                                        )
+                                                        .map(({ cat, idx }) => (
                                                         <div key={idx} style={{ marginBottom: '6px' }}>
                                                             <div style={{ fontSize: '11px', color: '#5f6368', marginBottom: '2px', textTransform: 'capitalize' }}>
                                                                 {cat.type}
@@ -1358,7 +1371,14 @@ export default function AdminPage({ onLogout }) {
                                                     ))}
                                                 </td>
                                                 <td>
-                                                    {Array.isArray(r.categories) && r.categories.map((cat, idx) => (
+                                                    {Array.isArray(r.categories) && r.categories
+                                                        .map((cat, idx) => ({ cat, idx }))  // preserve original index for updates
+                                                        .filter(({ cat }) =>
+                                                            catFilter === 'all' ? true :
+                                                            catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
+                                                            cat.type === catFilter
+                                                        )
+                                                        .map(({ cat, idx }) => (
                                                         <div key={idx} style={{ marginBottom: '6px' }}>
                                                             <div style={{ fontSize: '11px', color: '#5f6368', marginBottom: '2px', textTransform: 'capitalize' }}>
                                                                 {cat.type}
