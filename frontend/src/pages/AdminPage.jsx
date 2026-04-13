@@ -1180,7 +1180,7 @@ export default function AdminPage({ onLogout }) {
                                     onChange={(e) => setDeptFilter(e.target.value)}
                                     id="filter-dept"
                                 >
-                                    <option value="all">🏢 All Departments ({baseRegs.length})</option>
+                                    <option value="all">All Departments ({baseRegs.length})</option>
                                     {uniqueDepts.map(d => {
                                         const count = baseRegs.filter(r => r.department === d).length;
                                         return <option key={d} value={d}>{d} ({count})</option>;
@@ -1193,7 +1193,7 @@ export default function AdminPage({ onLogout }) {
                                     onChange={(e) => setClusterFilter(e.target.value)}
                                     id="filter-cluster"
                                 >
-                                    <option value="all">📍 All Clusters ({baseRegs.length})</option>
+                                    <option value="all">All Clusters ({baseRegs.length})</option>
                                     {uniqueClusters.map(c => {
                                         const count = baseRegs.filter(r => r.cluster === c).length;
                                         return <option key={c} value={c}>{c} ({count})</option>;
@@ -1206,7 +1206,7 @@ export default function AdminPage({ onLogout }) {
                                     onChange={(e) => setCatFilter(e.target.value)}
                                     id="filter-category"
                                 >
-                                    <option value="all">🏆 All Categories ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => activeTab === 'approved' ? cat.status === 'Approved' : true).length : 0), 0)})</option>
+                                    <option value="all">All Categories ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => activeTab === 'approved' ? cat.status === 'Approved' : true).length : 0), 0)})</option>
                                     {allCategories.map(c => {
                                         const count = baseRegs.filter(r =>
                                             Array.isArray(r.categories) && r.categories.some(cat =>
@@ -1214,7 +1214,7 @@ export default function AdminPage({ onLogout }) {
                                                 (activeTab === 'approved' ? cat.status === 'Approved' : true)
                                             )
                                         ).length;
-                                        return count > 0 ? <option key={c.id} value={c.id}>{c.icon} {c.label} ({count})</option> : null;
+                                        return count > 0 ? <option key={c.id} value={c.id}>{c.label} ({count})</option> : null;
                                     })}
                                     {(() => {
                                         const catIds = allCategories.map(c => c.id);
@@ -1224,7 +1224,7 @@ export default function AdminPage({ onLogout }) {
                                                 (activeTab === 'approved' ? cat.status === 'Approved' : true)
                                             )
                                         ).length;
-                                        return miscCount > 0 ? <option value="misc">❓ Miscellaneous ({miscCount})</option> : null;
+                                        return miscCount > 0 ? <option value="misc">Miscellaneous ({miscCount})</option> : null;
                                     })()}
                                 </select>
                             </div>
@@ -1239,10 +1239,10 @@ export default function AdminPage({ onLogout }) {
                                         id="filter-award"
                                         style={{ minWidth: 200 }}
                                     >
-                                        <option value="all">🎁 All Awards ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved')).length})</option>
-                                        <option value="momento">🏅 Getting Momento ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && c.award === 'momento')).length})</option>
-                                        <option value="certificate">📜 Getting Certificate ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && c.award === 'certificate')).length})</option>
-                                        <option value="none">⏳ Not Yet Assigned ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && !c.award)).length})</option>
+                                        <option value="all">All Awards ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved')).length})</option>
+                                        <option value="momento">Getting Momento ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && c.award === 'momento')).length})</option>
+                                        <option value="certificate">Getting Certificate ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && c.award === 'certificate')).length})</option>
+                                        <option value="none">Not Yet Assigned ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && !c.award)).length})</option>
                                     </select>
                                 </div>
                             )}
