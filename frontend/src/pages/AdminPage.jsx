@@ -811,7 +811,7 @@ export default function AdminPage({ onLogout }) {
             const deptMatch = deptFilter === 'all' ? true : r.department === deptFilter;
             const catMatch = catFilter === 'all' ? true :
                 catFilter === 'misc' ? (Array.isArray(r.categories) && r.categories.some(c => !allCategories.some(ac => ac.id === c.type))) :
-                (Array.isArray(r.categories) && r.categories.some(c => c.type === catFilter));
+                    (Array.isArray(r.categories) && r.categories.some(c => c.type === catFilter));
 
             return textMatch && attendMatch && clusterMatch && deptMatch && catMatch;
         })
@@ -936,7 +936,7 @@ export default function AdminPage({ onLogout }) {
 
     const exportToCSV = (data, filename) => {
         const headers = [
-            'Name', 'Email', 'UID/EID', 'Department', 'Cluster', 
+            'Name', 'Email', 'UID/EID', 'Department', 'Cluster',
             'Category Type', 'Category Status', 'Category Details',
             'Registered At', 'Ticket Sent', 'Overall Status', 'Award / Grant Type', 'Attendance'
         ];
@@ -1380,13 +1380,13 @@ export default function AdminPage({ onLogout }) {
                                                                 <option value="">— Select Award —</option>
                                                                 <option value="certificate">Certificate</option>
                                                                 <option value="momento">Momento</option>
-                                                                <option value="medal">Medal</option>
-                                                                <option value="badge">Badge</option>
+                                                                {/* <option value="medal">Medal</option> */}
+                                                                {/* <option value="badge">Badge</option>
                                                                 <option value="trophy">Trophy</option>
                                                                 <option value="momento+certificate">Momento + Certificate</option>
                                                                 <option value="medal+certificate">Medal + Certificate</option>
                                                                 <option value="badge+certificate">Badge + Certificate</option>
-                                                                <option value="trophy+certificate">Trophy + Certificate</option>
+                                                                <option value="trophy+certificate">Trophy + Certificate</option> */}
                                                             </select>
                                                         </div>
                                                     ))}
@@ -1653,11 +1653,11 @@ export default function AdminPage({ onLogout }) {
                                         ))}
 
                                         {othersCount > 0 && (
-                                            <div 
-                                                className="category-stat-card" 
-                                                style={{ 
-                                                    opacity: 1, 
-                                                    border: '1.5px dashed #f29900', 
+                                            <div
+                                                className="category-stat-card"
+                                                style={{
+                                                    opacity: 1,
+                                                    border: '1.5px dashed #f29900',
                                                     background: '#fffbf2',
                                                     cursor: 'pointer'
                                                 }}
