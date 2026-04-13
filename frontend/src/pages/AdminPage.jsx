@@ -696,6 +696,7 @@ export default function AdminPage({ onLogout }) {
     const [clusterFilter, setClusterFilter] = useState('all');
     const [deptFilter, setDeptFilter] = useState('all');
     const [catFilter, setCatFilter] = useState('all');
+    const [awardFilter, setAwardFilter] = useState('all');
     const [scanLoading, setScanLoading] = useState(false);
     const [scanResult, setScanResult] = useState(null);
     const [scanLog, setScanLog] = useState([]);
@@ -713,6 +714,16 @@ export default function AdminPage({ onLogout }) {
         { id: 'leadership', label: 'Leadership', icon: '👥' },
         { id: 'other', label: 'Exams & Awards', icon: '🏅' },
     ];
+    // Maps each category type to the primary name field in cat.data
+    const CAT_NAME_FIELD = {
+        research: 'research_name',
+        innovation: 'cert_title',
+        entrepreneurship: 'startup_name',
+        competitions: 'comp_name',
+        patents: 'patent_title',
+        leadership: 'club_name',
+        other: 'award_name',
+    };
 
     const load = useCallback(async () => {
         setLoading(true); setError('');
@@ -809,11 +820,27 @@ export default function AdminPage({ onLogout }) {
 
             const clusterMatch = clusterFilter === 'all' ? true : r.cluster === clusterFilter;
             const deptMatch = deptFilter === 'all' ? true : r.department === deptFilter;
-            const catMatch = catFilter === 'all' ? true :
-                catFilter === 'misc' ? (Array.isArray(r.categories) && r.categories.some(c => !allCategories.some(ac => ac.id === c.type))) :
-                    (Array.isArray(r.categories) && r.categories.some(c => c.type === catFilter));
+            const catMatch = catFilter === 'all'
+                ? (activeTab === 'approved'
+                    ? Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved')
+                    : true)
+                : catFilter === 'misc'
+                    ? (Array.isArray(r.categories) && r.categories.some(c =>
+                        !allCategories.some(ac => ac.id === c.type) &&
+                        (activeTab === 'approved' ? c.status === 'Approved' : true)
+                    ))
+                    : (Array.isArray(r.categories) && r.categories.some(c =>
+                        c.type === catFilter &&
+                        (activeTab === 'approved' ? c.status === 'Approved' : true)
+                    ));
 
-            return textMatch && attendMatch && clusterMatch && deptMatch && catMatch;
+            const awardMatch = activeTab !== 'approved' || awardFilter === 'all' ? true :
+                (Array.isArray(r.categories) && r.categories.some(c =>
+                    c.status === 'Approved' &&
+                    (awardFilter === 'none' ? !c.award : c.award === awardFilter)
+                ));
+
+            return textMatch && attendMatch && clusterMatch && deptMatch && catMatch && awardMatch;
         })
         .sort((a, b) => {
             const av = a[sortKey] || '';
@@ -835,7 +862,7 @@ export default function AdminPage({ onLogout }) {
     const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
     // Reset to page 1 whenever search / filter / sort changes
-    useEffect(() => { setPage(1); }, [search, attendFilter, clusterFilter, deptFilter, catFilter, sortKey, sortAsc]);
+    useEffect(() => { setPage(1); }, [search, attendFilter, clusterFilter, deptFilter, catFilter, awardFilter, sortKey, sortAsc]);
 
     // ── Delete ─────────────────────────────────────────────────────────────────
     const handleDelete = async () => {
@@ -1179,18 +1206,46 @@ export default function AdminPage({ onLogout }) {
                                     onChange={(e) => setCatFilter(e.target.value)}
                                     id="filter-category"
                                 >
-                                    <option value="all">🏆 All Categories ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.length : 0), 0)})</option>
+                                    <option value="all">🏆 All Categories ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => activeTab === 'approved' ? cat.status === 'Approved' : true).length : 0), 0)})</option>
                                     {allCategories.map(c => {
-                                        const count = baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => (cat.type || '').toLowerCase() === c.id.toLowerCase()).length : 0), 0);
-                                        return <option key={c.id} value={c.id}>{c.label} ({count})</option>;
+                                        const count = baseRegs.filter(r =>
+                                            Array.isArray(r.categories) && r.categories.some(cat =>
+                                                (cat.type || '').toLowerCase() === c.id.toLowerCase() &&
+                                                (activeTab === 'approved' ? cat.status === 'Approved' : true)
+                                            )
+                                        ).length;
+                                        return count > 0 ? <option key={c.id} value={c.id}>{c.icon} {c.label} ({count})</option> : null;
                                     })}
                                     {(() => {
                                         const catIds = allCategories.map(c => c.id);
-                                        const miscCount = baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => !catIds.includes(cat.type)).length : 0), 0);
+                                        const miscCount = baseRegs.filter(r =>
+                                            Array.isArray(r.categories) && r.categories.some(cat =>
+                                                !catIds.includes(cat.type) &&
+                                                (activeTab === 'approved' ? cat.status === 'Approved' : true)
+                                            )
+                                        ).length;
                                         return miscCount > 0 ? <option value="misc">❓ Miscellaneous ({miscCount})</option> : null;
                                     })()}
                                 </select>
                             </div>
+
+                            {/* Award filter — Approved tab only */}
+                            {activeTab === 'approved' && (
+                                <div className="admin-filters-grid" style={{ marginTop: 8 }}>
+                                    <select
+                                        className="admin-select-sm"
+                                        value={awardFilter}
+                                        onChange={(e) => setAwardFilter(e.target.value)}
+                                        id="filter-award"
+                                        style={{ minWidth: 200 }}
+                                    >
+                                        <option value="all">🎁 All Awards ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved')).length})</option>
+                                        <option value="momento">🏅 Getting Momento ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && c.award === 'momento')).length})</option>
+                                        <option value="certificate">📜 Getting Certificate ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && c.award === 'certificate')).length})</option>
+                                        <option value="none">⏳ Not Yet Assigned ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && !c.award)).length})</option>
+                                    </select>
+                                </div>
+                            )}
 
                             <div className="attend-filter-pills">
                                 <button
@@ -1280,6 +1335,7 @@ export default function AdminPage({ onLogout }) {
                                             </th>
                                             <th>Department & Cluster</th>
                                             <th>{activeTab === 'approved' ? 'Approved Categories' : 'Categories Applied'}</th>
+                                            <th>Title / Name</th>
                                             {activeTab !== 'approved' && (
                                                 <th onClick={() => toggleSort('created_at')} className="sortable">
                                                     Registered At <SortIcon col="created_at" />
@@ -1337,6 +1393,34 @@ export default function AdminPage({ onLogout }) {
                                                     ) : (
                                                         <span className="text-muted">—</span>
                                                     )}
+                                                </td>
+                                                {/* Title / Name column */}
+                                                <td style={{ maxWidth: 200 }}>
+                                                    {Array.isArray(r.categories) && r.categories.length > 0 ? (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                            {r.categories
+                                                                .filter(cat => {
+                                                                    const catFilterMatch =
+                                                                        catFilter === 'all' ? true :
+                                                                        catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
+                                                                        cat.type === catFilter;
+                                                                    const approvedMatch = activeTab === 'approved' ? cat.status === 'Approved' : true;
+                                                                    return catFilterMatch && approvedMatch;
+                                                                })
+                                                                .map((cat, idx) => {
+                                                                    const nameField = CAT_NAME_FIELD[cat.type];
+                                                                    const nameVal = nameField && cat.data ? cat.data[nameField] : null;
+                                                                    return nameVal ? (
+                                                                        <span key={idx} title={nameVal} style={{
+                                                                            fontSize: '12px', color: '#202124',
+                                                                            display: 'block', whiteSpace: 'nowrap',
+                                                                            overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200
+                                                                        }}>{nameVal}</span>
+                                                                    ) : <span key={idx} className="text-muted" style={{ fontSize: '12px' }}>—</span>;
+                                                                })
+                                                            }
+                                                        </div>
+                                                    ) : <span className="text-muted">—</span>}
                                                 </td>
                                                 {activeTab !== 'approved' && (
                                                     <td className="admin-td-date">{formatDate(r.created_at)}</td>
