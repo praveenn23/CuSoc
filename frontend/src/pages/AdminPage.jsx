@@ -697,6 +697,7 @@ export default function AdminPage({ onLogout }) {
     const [deptFilter, setDeptFilter] = useState('all');
     const [catFilter, setCatFilter] = useState('all');
     const [awardFilter, setAwardFilter] = useState('all');
+    const [mentorView, setMentorView] = useState('all'); // 'all' or 'unique'
     const [scanLoading, setScanLoading] = useState(false);
     const [scanResult, setScanResult] = useState(null);
     const [scanLog, setScanLog] = useState([]);
@@ -796,10 +797,9 @@ export default function AdminPage({ onLogout }) {
     };
 
     const approvedRegs = regs.filter(r => {
-        return Array.isArray(r.categories) && r.categories.some(c => {
-            const effectiveStatus = c.status || r.evaluation_status || 'Pending';
-            return effectiveStatus === 'Approved';
-        });
+        const glob = (r.evaluation_status || '').trim().toUpperCase();
+        const hasApprovedCat = Array.isArray(r.categories) && r.categories.some(c => (c.status || '').trim().toUpperCase() === 'APPROVED');
+        return glob === 'APPROVED' || hasApprovedCat;
     });
 
     const totalApprovedEntries = approvedRegs.length;
@@ -817,23 +817,41 @@ export default function AdminPage({ onLogout }) {
             r.categories.forEach(cat => {
                 const effectiveStatus = cat.status || r.evaluation_status || 'Pending';
                 if (effectiveStatus === 'Approved' && cat.data && cat.data.mentored_by) {
+                    const field = CAT_NAME_FIELD[cat.type];
+                    const projectTitle = field && cat.data ? cat.data[field] : '—';
+                    
                     facultyMentors.push({
                         id: `${r.id}-${cat.type}`,
-                        regId: r.id, // Store original registration ID
+                        regId: r.id, 
                         facultyName: cat.data.faculty_name,
                         facultyEcode: cat.data.faculty_ecode,
                         studentName: r.name,
+                        projectTitle: projectTitle,
                         category: (cat.type || '').charAt(0).toUpperCase() + (cat.type || '').slice(1),
                         categoryRaw: cat.type,
                         categoryIndex: r.categories.findIndex(c => c === cat),
                         award: cat.award,
                         facultyAward: cat.faculty_award
                     });
-                    if (cat.data.faculty_ecode) uniqueMentorCodes.add(cat.data.faculty_ecode);
+                    if (cat.data.faculty_ecode) uniqueMentorCodes.add(cat.data.faculty_ecode.trim().toUpperCase());
                 }
             });
         }
     });
+
+    const uniqueMentorsMap = {};
+    facultyMentors.forEach(m => {
+        const key = (m.facultyEcode || m.facultyName || 'N/A').trim().toUpperCase();
+        if (!uniqueMentorsMap[key]) {
+            uniqueMentorsMap[key] = {
+                facultyName: m.facultyName,
+                facultyEcode: m.facultyEcode,
+                mentorships: []
+            };
+        }
+        uniqueMentorsMap[key].mentorships.push(m);
+    });
+    const uniqueMentorsList = Object.values(uniqueMentorsMap);
 
     const filtered = baseRegs
         .filter((r) => {
@@ -1236,7 +1254,7 @@ export default function AdminPage({ onLogout }) {
                         onClick={() => setActiveTab('mentors')}
                         id="tab-mentors"
                     >
-                        <UserPlus size={16} /> Faculty Mentors ({facultyMentors.length})
+                        <UserPlus size={16} /> Faculty Mentors ({uniqueMentorCodes.size})
                     </button>
                     <button
                         className={`admin-tab ${activeTab === 'analytics' ? 'active' : ''}`}
@@ -1309,24 +1327,14 @@ export default function AdminPage({ onLogout }) {
                                     onChange={(e) => setCatFilter(e.target.value)}
                                     id="filter-category"
                                 >
-                                    <option value="all">All Categories ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => activeTab === 'approved' ? cat.status === 'Approved' : true).length : 0), 0)})</option>
+                                    <option value="all">All Categories ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => activeTab === 'approved' ? ((cat.status || '').trim().toUpperCase() === 'APPROVED' || (r.evaluation_status || '').trim().toUpperCase() === 'APPROVED') : true).length : 0), 0)})</option>
                                     {allCategories.map(c => {
-                                        const count = baseRegs.filter(r =>
-                                            Array.isArray(r.categories) && r.categories.some(cat =>
-                                                (cat.type || '').toLowerCase() === c.id.toLowerCase() &&
-                                                (activeTab === 'approved' ? cat.status === 'Approved' : true)
-                                            )
-                                        ).length;
+                                        const count = baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => (cat.type || '').toLowerCase() === c.id.toLowerCase() && (activeTab === 'approved' ? ((cat.status || '').trim().toUpperCase() === 'APPROVED' || (r.evaluation_status || '').trim().toUpperCase() === 'APPROVED') : true)).length : 0), 0);
                                         return count > 0 ? <option key={c.id} value={c.id}>{c.label} ({count})</option> : null;
                                     })}
                                     {(() => {
                                         const catIds = allCategories.map(c => c.id);
-                                        const miscCount = baseRegs.filter(r =>
-                                            Array.isArray(r.categories) && r.categories.some(cat =>
-                                                !catIds.includes(cat.type) &&
-                                                (activeTab === 'approved' ? cat.status === 'Approved' : true)
-                                            )
-                                        ).length;
+                                        const miscCount = baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(cat => !catIds.includes(cat.type) && (activeTab === 'approved' ? ((cat.status || '').trim().toUpperCase() === 'APPROVED' || (r.evaluation_status || '').trim().toUpperCase() === 'APPROVED') : true)).length : 0), 0);
                                         return miscCount > 0 ? <option value="misc">Miscellaneous ({miscCount})</option> : null;
                                     })()}
                                 </select>
@@ -1342,10 +1350,10 @@ export default function AdminPage({ onLogout }) {
                                         id="filter-award"
                                         style={{ minWidth: 200 }}
                                     >
-                                        <option value="all">All Awards ({baseRegs.length})</option>
-                                        <option value="momento">Getting Momento ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && c.award?.includes('momento'))).length})</option>
-                                        <option value="certificate">Getting Certificate ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && c.award?.includes('certificate'))).length})</option>
-                                        <option value="none">Award Not Yet Assigned ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && !c.award)).length})</option>
+                                        <option value="all">All Awards ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => ((c.status || '').trim().toUpperCase() === 'APPROVED' || (r.evaluation_status || '').trim().toUpperCase() === 'APPROVED')).length : 0), 0)})</option>
+                                        <option value="momento">Getting Momento ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => ((c.status || '').trim().toUpperCase() === 'APPROVED' || (r.evaluation_status || '').trim().toUpperCase() === 'APPROVED') && c.award?.includes('momento')).length : 0), 0)})</option>
+                                        <option value="certificate">Getting Certificate ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => ((c.status || '').trim().toUpperCase() === 'APPROVED' || (r.evaluation_status || '').trim().toUpperCase() === 'APPROVED') && c.award?.includes('certificate')).length : 0), 0)})</option>
+                                        <option value="none">Award Not Yet Assigned ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => ((c.status || '').trim().toUpperCase() === 'APPROVED' || (r.evaluation_status || '').trim().toUpperCase() === 'APPROVED') && !c.award).length : 0), 0)})</option>
                                     </select>
                                 </div>
                             )}
@@ -1747,78 +1755,154 @@ export default function AdminPage({ onLogout }) {
                                     <h2><UserPlus size={18} /> Faculty Mentors List</h2>
                                     <p>Showing <strong>{facultyMentors.length}</strong> mentorship entries from <strong>{uniqueMentorCodes.size}</strong> unique faculty members.</p>
                                 </div>
-                                <button className="btn btn-secondary btn-sm" onClick={() => exportToCSV(facultyMentors, `faculty_mentors_${new Date().toLocaleDateString()}.csv`, [
-                                    'Faculty Name', 'Faculty E-Code', 'Nominated By (Student)', 'Nominated Category', 'Faculty Award'
-                                ])}>
-                                    <Download size={14} /> Export Mentors
-                                </button>
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                    <div className="admin-view-toggle">
+                                        <button 
+                                            className={`toggle-btn ${mentorView === 'all' ? 'active' : ''}`}
+                                            onClick={() => setMentorView('all')}
+                                        >
+                                            Detailed
+                                        </button>
+                                        <button 
+                                            className={`toggle-btn ${mentorView === 'unique' ? 'active' : ''}`}
+                                            onClick={() => setMentorView('unique')}
+                                        >
+                                            Unique Summary
+                                        </button>
+                                    </div>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => {
+                                        const dataToExport = mentorView === 'all' ? facultyMentors : uniqueMentorsList.map(u => ({
+                                            'Faculty Name': u.facultyName,
+                                            'Faculty E-Code': u.facultyEcode,
+                                            'Total Students': u.mentorships.length,
+                                            'Projects': u.mentorships.map(m => m.projectTitle).join(', '),
+                                            'Categories': [...new Set(u.mentorships.map(m => m.category))].join(', ')
+                                        }));
+                                        exportToCSV(dataToExport, `faculty_mentors_${mentorView}_${new Date().toLocaleDateString()}.csv`);
+                                    }}>
+                                        <Download size={14} /> Export {mentorView === 'all' ? 'List' : 'Summary'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
                         <div className="admin-table-wrap">
-                            <table className="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th className="admin-td-num">#</th>
-                                        <th>Faculty Name</th>
-                                        <th>Faculty E-Code</th>
-                                        <th>Nominated By (Student)</th>
-                                        <th>Nominated Category</th>
-                                        <th>Award / Grant</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {facultyMentors.length > 0 ? (
-                                        facultyMentors.map((m, idx) => (
-                                            <tr key={m.id} className="admin-row">
-                                                <td className="admin-td-num">{idx + 1}</td>
-                                                <td style={{ fontWeight: 600, color: '#202124' }}>{m.facultyName}</td>
-                                                <td><span className="badge badge-secondary" style={{ background: '#f1f3f4', color: '#5f6368', border: '1px solid #dadce0' }}>{m.facultyEcode}</span></td>
-                                                <td className="admin-td-name">{m.studentName}</td>
-                                                <td>
-                                                    <span style={{ 
-                                                        padding: '2px 8px', background: '#e8f0fe', color: '#1967d2', 
-                                                        borderRadius: '12px', fontSize: '11px', fontWeight: 600
-                                                    }}>
-                                                        {m.category}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <select
-                                                        className="admin-select-sm"
-                                                        value={m.facultyAward || ''}
-                                                        onChange={(e) => handleFacultyAwardUpdate(m.regId, m.categoryIndex, e.target.value)}
-                                                        style={{
-                                                            fontSize: '11px',
-                                                            padding: '4px 6px',
-                                                            borderRadius: '4px',
-                                                            border: '1px solid #dadce0',
-                                                            background: m.facultyAward ? '#fffbf2' : '#fff',
-                                                            cursor: 'pointer',
-                                                            width: '100%'
-                                                        }}
-                                                    >
-                                                        <option value="">— Select Faculty Award —</option>
-                                                        <option value="certificate">Certificate</option>
-                                                        <option value="momento">Momento</option>
-                                                        {/* <option value="momento+certificate">Momento + Certificate</option>
-                                                        <option value="medal+certificate">Medal + Certificate</option>
-                                                        <option value="badge+certificate">Badge + Certificate</option>
-                                                        <option value="trophy+certificate">Trophy + Certificate</option> */}
-                                                    </select>
+                            {mentorView === 'all' ? (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th className="admin-td-num">#</th>
+                                            <th>Faculty Name</th>
+                                            <th>Faculty E-Code</th>
+                                            <th style={{ minWidth: 200 }}>Title / Name</th>
+                                            <th>Nominated By (Student)</th>
+                                            <th>Nominated Category</th>
+                                            <th>Award / Grant</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {facultyMentors.length > 0 ? (
+                                            facultyMentors.map((m, idx) => (
+                                                <tr key={m.id} className="admin-row">
+                                                    <td className="admin-td-num">{idx + 1}</td>
+                                                    <td style={{ fontWeight: 600, color: '#202124' }}>{m.facultyName}</td>
+                                                    <td><span className="badge badge-secondary" style={{ background: '#f1f3f4', color: '#5f6368', border: '1px solid #dadce0' }}>{m.facultyEcode}</span></td>
+                                                    <td style={{ fontSize: '12px', color: '#5f6368', maxWidth: 250 }}>{m.projectTitle}</td>
+                                                    <td className="admin-td-name">{m.studentName}</td>
+                                                    <td>
+                                                        <span style={{ 
+                                                            padding: '2px 8px', background: '#e8f0fe', color: '#1967d2', 
+                                                            borderRadius: '12px', fontSize: '11px', fontWeight: 600
+                                                        }}>
+                                                            {m.category}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <select
+                                                            className="admin-select-sm"
+                                                            value={m.facultyAward || ''}
+                                                            onChange={(e) => handleFacultyAwardUpdate(m.regId, m.categoryIndex, e.target.value)}
+                                                            style={{
+                                                                fontSize: '11px',
+                                                                padding: '4px 6px',
+                                                                borderRadius: '4px',
+                                                                border: '1px solid #dadce0',
+                                                                background: m.facultyAward ? '#fffbf2' : '#fff',
+                                                                cursor: 'pointer',
+                                                                width: '100%'
+                                                            }}
+                                                        >
+                                                            <option value="">— Select Faculty Award —</option>
+                                                            <option value="certificate">Certificate</option>
+                                                            <option value="momento">Momento</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="7" style={{ textAlign: 'center', padding: '40px 0', color: '#5f6368' }}>
+                                                    <div style={{ marginBottom: 12 }}><AlertTriangle size={32} style={{ opacity: 0.3 }} /></div>
+                                                    No faculty mentors found in approved nominations.
                                                 </td>
                                             </tr>
-                                        ))
-                                    ) : (
+                                        )}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <table className="admin-table">
+                                    <thead>
                                         <tr>
-                                            <td colSpan="6" style={{ textAlign: 'center', padding: '40px 0', color: '#5f6368' }}>
-                                                <div style={{ marginBottom: 12 }}><AlertTriangle size={32} style={{ opacity: 0.3 }} /></div>
-                                                No faculty mentors found in approved nominations.
-                                            </td>
+                                            <th className="admin-td-num">#</th>
+                                            <th>Faculty Name</th>
+                                            <th>Faculty E-Code</th>
+                                            <th>Total Students</th>
+                                            <th>Mentored Categories</th>
+                                            <th style={{ minWidth: 300 }}>Projects / Student Names</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {uniqueMentorsList.length > 0 ? (
+                                            uniqueMentorsList.map((m, idx) => (
+                                                <tr key={m.facultyEcode} className="admin-row">
+                                                    <td className="admin-td-num">{idx + 1}</td>
+                                                    <td style={{ fontWeight: 600, color: '#202124' }}>{m.facultyName}</td>
+                                                    <td><span className="badge badge-secondary" style={{ background: '#f1f3f4', color: '#5f6368', border: '1px solid #dadce0' }}>{m.facultyEcode}</span></td>
+                                                    <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{m.mentorships.length}</td>
+                                                    <td>
+                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                                            {[...new Set(m.mentorships.map(x => x.category))].map(cat => (
+                                                                <span key={cat} style={{ 
+                                                                    padding: '2px 6px', background: '#f1f3f4', color: '#5f6368', 
+                                                                    borderRadius: '8px', fontSize: '10px', fontWeight: 600
+                                                                }}>
+                                                                    {cat}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ fontSize: '11px', lineHeight: '1.4', color: '#5f6368' }}>
+                                                            {m.mentorships.map((ms, i) => (
+                                                                <div key={i} style={{ marginBottom: 4, borderBottom: i < m.mentorships.length -1 ? '1px solid #f1f3f4' : 'none', paddingBottom: 2 }}>
+                                                                    <strong>{ms.studentName}:</strong> {ms.projectTitle}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="6" style={{ textAlign: 'center', padding: '40px 0', color: '#5f6368' }}>
+                                                    <div style={{ marginBottom: 12 }}><AlertTriangle size={32} style={{ opacity: 0.3 }} /></div>
+                                                    No faculty mentors found.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 )}
