@@ -255,8 +255,8 @@ const sendTickets = async (req, res) => {
       errors: results.errors
     });
   } catch (err) {
-    console.error('sendTickets error:', err.message);
-    return res.status(500).json({ error: 'Failed to send tickets.' });
+    console.error('sendTickets error:', err.stack);
+    return res.status(500).json({ error: `Failed to send tickets: ${err.message}` });
   }
 };
 

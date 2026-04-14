@@ -11,6 +11,8 @@ import {
     updateEvaluation, updateAward, sendTestTicket,
 } from '../services/adminApi';
 import './AdminPage.css';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, color }) {
@@ -1771,16 +1773,64 @@ export default function AdminPage({ onLogout }) {
                                         </button>
                                     </div>
                                     <button className="btn btn-secondary btn-sm" onClick={() => {
-                                        const dataToExport = mentorView === 'all' ? facultyMentors : uniqueMentorsList.map(u => ({
-                                            'Faculty Name': u.facultyName,
-                                            'Faculty E-Code': u.facultyEcode,
-                                            'Total Students': u.mentorships.length,
-                                            'Projects': u.mentorships.map(m => m.projectTitle).join(', '),
-                                            'Categories': [...new Set(u.mentorships.map(m => m.category))].join(', ')
-                                        }));
-                                        exportToCSV(dataToExport, `faculty_mentors_${mentorView}_${new Date().toLocaleDateString()}.csv`);
+                                        if (mentorView === 'unique') {
+                                            const doc = new jsPDF('landscape');
+                                            doc.setFontSize(18);
+                                            doc.text('Faculty Mentors Recognition Summary', 14, 20);
+                                            
+                                            doc.setFontSize(10);
+                                            doc.setTextColor(100);
+                                            const summaryText = `Total Unique Mentors: ${uniqueMentorsList.length} | Total Student Projects Mentored: ${facultyMentors.length}`;
+                                            doc.text(summaryText, 14, 28);
+                                            doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, 14, 34);
+
+                                            const tableColumn = ["#", "Faculty Name", "E-Code", "Students Mentored", "Categories", "Projects & Students"];
+                                            const tableRows = [];
+
+                                            uniqueMentorsList.forEach((u, idx) => {
+                                                const categories = [...new Set(u.mentorships.map(m => m.category))].join(', ');
+                                                const projects = u.mentorships.map(m => `${m.studentName}: ${m.projectTitle}`).join('\n');
+                                                tableRows.push([
+                                                    idx + 1,
+                                                    u.facultyName || 'N/A',
+                                                    u.facultyEcode || 'N/A',
+                                                    u.mentorships.length.toString(),
+                                                    categories,
+                                                    projects
+                                                ]);
+                                            });
+
+                                            autoTable(doc, {
+                                                startY: 42,
+                                                head: [tableColumn],
+                                                body: tableRows,
+                                                theme: 'grid',
+                                                headStyles: { fillColor: [26, 115, 232], textColor: [255, 255, 255], fontStyle: 'bold' },
+                                                alternateRowStyles: { fillColor: [248, 249, 250] },
+                                                styles: { fontSize: 9, cellPadding: 4, overflow: 'linebreak', valign: 'middle' },
+                                                columnStyles: {
+                                                    0: { cellWidth: 10, halign: 'center' },
+                                                    1: { cellWidth: 40, fontStyle: 'bold' },
+                                                    2: { cellWidth: 25 },
+                                                    3: { cellWidth: 30, halign: 'center', fontStyle: 'bold' },
+                                                    4: { cellWidth: 40 },
+                                                    5: { cellWidth: 'auto' }
+                                                }
+                                            });
+
+                                            doc.save(`Faculty_Mentor_Summary_${new Date().toISOString().split('T')[0]}.pdf`);
+                                        } else {
+                                            const dataToExport = facultyMentors.map(m => ({
+                                                'Faculty Name': m.facultyName,
+                                                'Faculty E-Code': m.facultyEcode,
+                                                'Project Title': m.projectTitle,
+                                                'Student Name': m.studentName,
+                                                'Category': m.category
+                                            }));
+                                            exportToCSV(dataToExport, `faculty_mentors_list_${new Date().toLocaleDateString()}.csv`);
+                                        }
                                     }}>
-                                        <Download size={14} /> Export {mentorView === 'all' ? 'List' : 'Summary'}
+                                        <Download size={14} /> Export {mentorView === 'all' ? 'List' : 'Summary as PDF'}
                                     </button>
                                 </div>
                             </div>
@@ -2022,68 +2072,98 @@ export default function AdminPage({ onLogout }) {
                                 <BarChart2 size={16} /> Category Application Insights
                             </div>
 
-                            {(() => {
-                                const allCategoryEntries = regs.flatMap(r => Array.isArray(r.categories) ? r.categories : []);
-                                const totalCategoryApplications = allCategoryEntries.length;
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                                {[
+                                    { title: "Total Received", isApproved: false },
+                                    { title: "Approved Only", isApproved: true }
+                                ].map(({ title, isApproved }) => {
+                                    let filteredRegs = regs;
+                                    if (isApproved) {
+                                        filteredRegs = regs.filter(r => {
+                                            const glob = (r.evaluation_status || '').trim().toUpperCase();
+                                            const hasApprovedCat = Array.isArray(r.categories) && r.categories.some(c => (c.status || '').trim().toUpperCase() === 'APPROVED');
+                                            return glob === 'APPROVED' || hasApprovedCat;
+                                        });
+                                    }
 
-                                const categoryStats = allCategories.map(cat => ({
-                                    ...cat,
-                                    count: allCategoryEntries.filter(c => (c.type || '').toLowerCase() === cat.id.toLowerCase()).length
-                                }));
+                                    const allCategoryEntries = filteredRegs.flatMap(r => {
+                                        if (!Array.isArray(r.categories)) return [];
+                                        if (!isApproved) return r.categories;
+                                        return r.categories.filter(c => 
+                                            (c.status || '').trim().toUpperCase() === 'APPROVED' || 
+                                            (r.evaluation_status || '').trim().toUpperCase() === 'APPROVED'
+                                        );
+                                    });
+                                    const totalCategoryApplications = allCategoryEntries.length;
 
-                                const knownCount = categoryStats.reduce((s, c) => s + c.count, 0);
-                                const othersCount = totalCategoryApplications - knownCount;
+                                    const categoryStats = allCategories.map(cat => ({
+                                        ...cat,
+                                        count: allCategoryEntries.filter(c => (c.type || '').toLowerCase() === cat.id.toLowerCase()).length
+                                    }));
 
-                                return (
-                                    <div className="category-stats-grid">
-                                        <div className="category-stat-card total-apps-card" style={{ cursor: 'default' }}>
-                                            <div className="category-stat-header">
-                                                <div className="category-stat-icon-wrap">📊</div>
-                                                <div className="category-stat-value">{totalCategoryApplications}</div>
+                                    const knownCount = categoryStats.reduce((s, c) => s + c.count, 0);
+                                    const othersCount = totalCategoryApplications - knownCount;
+
+                                    return (
+                                        <div key={title}>
+                                            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#3c4043', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}> 
+                                                {isApproved ? <CheckCircle size={16} color="#1a73e8" /> : null} {title}
+                                            </h3>
+                                            <div className="category-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
+                                                <div className="category-stat-card total-apps-card" style={{ cursor: 'default', background: isApproved ? '#1967d2' : undefined, borderColor: isApproved ? '#aecbfa' : undefined }}>
+                                                    <div className="category-stat-header">
+                                                        <div className="category-stat-icon-wrap" style={{ background: isApproved ? '#d2e3fc' : undefined }}>📊</div>
+                                                        <div className="category-stat-value" style={{ color: isApproved ? '#e8f0fe' : undefined }}>{totalCategoryApplications}</div>
+                                                    </div>
+                                                    <div className="category-stat-label">Total {isApproved ? 'Approved' : 'Nominations'}</div>
+                                                    <div className="category-stat-subtext">Sum of {isApproved ? 'approved' : 'all'} entries</div>
+                                                </div>
+
+                                                {categoryStats.map(cat => (
+                                                    <div key={cat.id} className="category-stat-card">
+                                                        <div className="category-stat-header">
+                                                            <div className="category-stat-icon-wrap">{cat.icon}</div>
+                                                            <div className="category-stat-value">{cat.count}</div>
+                                                        </div>
+                                                        <div className="category-stat-label">{cat.label}</div>
+                                                        <div className="category-stat-subtext">{isApproved ? 'Approved' : 'Registrations'}</div>
+                                                    </div>
+                                                ))}
+
+                                                {othersCount > 0 && (
+                                                    <div
+                                                        className="category-stat-card"
+                                                        style={{
+                                                            opacity: 1,
+                                                            border: '1.5px dashed #f29900',
+                                                            background: '#fffbf2',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                        onClick={() => {
+                                                            setActiveTab(isApproved ? 'approved' : 'registrations');
+                                                            setCatFilter('misc');
+                                                            // Small delay to allow tab to switch
+                                                            setTimeout(() => {
+                                                                document.getElementById('filter-category')?.scrollIntoView({ behavior: 'smooth' });
+                                                            }, 100);
+                                                        }}
+                                                        title={`Click to view these ${isApproved ? 'approved ' : ''}entries`}
+                                                    >
+                                                        <div className="category-stat-header">
+                                                            <div className="category-stat-icon-wrap" style={{ background: '#fef3e2' }}>❓</div>
+                                                            <div className="category-stat-value" style={{ color: '#ea8600' }}>{othersCount}</div>
+                                                        </div>
+                                                        <div className="category-stat-label">Misc / Other</div>
+                                                        <div className="category-stat-subtext">Find uncategorized</div>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="category-stat-label">Total Nominations</div>
-                                            <div className="category-stat-subtext">Sum of all entries in system</div>
                                         </div>
+                                    );
+                                })}
+                            </div>
 
-                                        {categoryStats.map(cat => (
-                                            <div key={cat.id} className="category-stat-card">
-                                                <div className="category-stat-header">
-                                                    <div className="category-stat-icon-wrap">{cat.icon}</div>
-                                                    <div className="category-stat-value">{cat.count}</div>
-                                                </div>
-                                                <div className="category-stat-label">{cat.label}</div>
-                                                <div className="category-stat-subtext">Registrations</div>
-                                            </div>
-                                        ))}
-
-                                        {othersCount > 0 && (
-                                            <div
-                                                className="category-stat-card"
-                                                style={{
-                                                    opacity: 1,
-                                                    border: '1.5px dashed #f29900',
-                                                    background: '#fffbf2',
-                                                    cursor: 'pointer'
-                                                }}
-                                                onClick={() => {
-                                                    setCatFilter('misc');
-                                                    document.getElementById('filter-category')?.scrollIntoView({ behavior: 'smooth' });
-                                                }}
-                                                title="Click to view these entries"
-                                            >
-                                                <div className="category-stat-header">
-                                                    <div className="category-stat-icon-wrap" style={{ background: '#fef3e2' }}>❓</div>
-                                                    <div className="category-stat-value" style={{ color: '#ea8600' }}>{othersCount}</div>
-                                                </div>
-                                                <div className="category-stat-label">Misc / Other</div>
-                                                <div className="category-stat-subtext">Find uncategorized entries</div>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })()}
-
-                            <div className="admin-table-toolbar" style={{ borderBottom: '1px solid #e8eaed', paddingBottom: 16, paddingLeft: 0, paddingRight: 0 }}>
+                            <div className="admin-table-toolbar" style={{ borderBottom: '1px solid #e8eaed', paddingBottom: 16, paddingLeft: 0, paddingRight: 0, marginTop: 40 }}>
                                 <h2 style={{ fontSize: 18, margin: 0, fontWeight: 600, color: '#202124', display: 'flex', alignItems: 'center' }}>
                                     <BarChart2 size={20} style={{ marginRight: 8 }} /> Cluster Cross-Tabulation
                                 </h2>
