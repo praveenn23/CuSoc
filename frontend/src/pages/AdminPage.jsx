@@ -802,9 +802,7 @@ export default function AdminPage({ onLogout }) {
         });
     });
 
-    const totalApprovedEntries = regs.reduce((sum, r) => 
-        sum + (Array.isArray(r.categories) ? r.categories.filter(c => (c.status || r.evaluation_status || 'Pending') === 'Approved').length : 0)
-    , 0);
+    const totalApprovedEntries = approvedRegs.length;
 
     const baseRegs = activeTab === 'approved' ? approvedRegs : regs;
 
@@ -1344,10 +1342,10 @@ export default function AdminPage({ onLogout }) {
                                         id="filter-award"
                                         style={{ minWidth: 200 }}
                                     >
-                                        <option value="all">All Awards ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => (c.status || r.evaluation_status || 'Pending') === 'Approved').length : 0), 0)})</option>
-                                        <option value="momento">Getting Momento ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && (c.award?.includes('momento'))).length : 0), 0)})</option>
-                                        <option value="certificate">Getting Certificate ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && (c.award?.includes('certificate'))).length : 0), 0)})</option>
-                                        <option value="none">Award Not Yet Assigned ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && !c.award).length : 0), 0)})</option>
+                                        <option value="all">All Awards ({baseRegs.length})</option>
+                                        <option value="momento">Getting Momento ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && c.award?.includes('momento'))).length})</option>
+                                        <option value="certificate">Getting Certificate ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && c.award?.includes('certificate'))).length})</option>
+                                        <option value="none">Award Not Yet Assigned ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && !c.award)).length})</option>
                                     </select>
                                 </div>
                             )}
