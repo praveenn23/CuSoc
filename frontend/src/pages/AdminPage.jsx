@@ -8,7 +8,7 @@ import {
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
     fetchAdminEvent, updateAdminEvent, sendTicketEmails, markAttendance,
-    updateEvaluation, updateAward,
+    updateEvaluation, updateAward, sendTestTicket,
 } from '../services/adminApi';
 import './AdminPage.css';
 
@@ -801,17 +801,56 @@ export default function AdminPage({ onLogout }) {
             return effectiveStatus === 'Approved';
         });
     });
+
+    const totalApprovedEntries = regs.reduce((sum, r) => 
+        sum + (Array.isArray(r.categories) ? r.categories.filter(c => (c.status || r.evaluation_status || 'Pending') === 'Approved').length : 0)
+    , 0);
+
     const baseRegs = activeTab === 'approved' ? approvedRegs : regs;
+
+    // Extract faculty mentors from approved categories
+    const facultyMentors = [];
+    const uniqueMentorCodes = new Set();
+    
+    // Always use 'regs' (all registrations) but filter by 'Approved' status inside
+    // to ensure the count doesn't change when flipping between All/Approved tabs
+    regs.forEach(r => {
+        if (Array.isArray(r.categories)) {
+            r.categories.forEach(cat => {
+                const effectiveStatus = cat.status || r.evaluation_status || 'Pending';
+                if (effectiveStatus === 'Approved' && cat.data && cat.data.mentored_by) {
+                    facultyMentors.push({
+                        id: `${r.id}-${cat.type}`,
+                        regId: r.id, // Store original registration ID
+                        facultyName: cat.data.faculty_name,
+                        facultyEcode: cat.data.faculty_ecode,
+                        studentName: r.name,
+                        category: (cat.type || '').charAt(0).toUpperCase() + (cat.type || '').slice(1),
+                        categoryRaw: cat.type,
+                        categoryIndex: r.categories.findIndex(c => c === cat),
+                        award: cat.award,
+                        facultyAward: cat.faculty_award
+                    });
+                    if (cat.data.faculty_ecode) uniqueMentorCodes.add(cat.data.faculty_ecode);
+                }
+            });
+        }
+    });
 
     const filtered = baseRegs
         .filter((r) => {
             const q = search.toLowerCase();
             const textMatch = (
-                r.name.toLowerCase().includes(q) ||
-                r.email.toLowerCase().includes(q) ||
+                (r.name || '').toLowerCase().includes(q) ||
+                (r.email || '').toLowerCase().includes(q) ||
                 (r.uid || '').toLowerCase().includes(q) ||
                 (r.department || '').toLowerCase().includes(q) ||
-                (r.cluster || '').toLowerCase().includes(q)
+                (r.cluster || '').toLowerCase().includes(q) ||
+                (Array.isArray(r.categories) && r.categories.some(cat => {
+                    const field = CAT_NAME_FIELD[cat.type];
+                    const val = field && cat.data ? cat.data[field] : '';
+                    return (val || '').toLowerCase().includes(q);
+                }))
             );
             const attendMatch =
                 attendFilter === 'all' ? true :
@@ -961,28 +1000,69 @@ export default function AdminPage({ onLogout }) {
         }
     };
 
-    const exportToCSV = (data, filename) => {
-        const headers = [
+    const handleFacultyAwardUpdate = async (regId, categoryIndex, award) => {
+        try {
+            const { data } = await updateAward(regId, award, categoryIndex, true);
+            if (data.success) {
+                const updateReg = (r) => {
+                    if (r.id !== regId) return r;
+                    const newCats = [...r.categories];
+                    newCats[categoryIndex] = { ...newCats[categoryIndex], faculty_award: award };
+                    return { ...r, categories: newCats };
+                };
+                setRegs((prev) => prev.map(updateReg));
+                setViewTarget((prev) => prev ? updateReg(prev) : prev);
+            }
+        } catch (err) {
+            console.error('Failed to update faculty award:', err);
+            alert('Failed to update faculty award selection');
+        }
+    };
+
+    const exportToCSV = (data, filename, customHeaders = null) => {
+        const standardHeaders = [
             'Name', 'Email', 'UID/EID', 'Department', 'Cluster',
             'Category Type', 'Category Status', 'Category Details',
             'Registered At', 'Ticket Sent', 'Overall Status', 'Award / Grant Type', 'Attendance'
         ];
+        const headers = customHeaders || standardHeaders;
 
         const rows = [];
         data.forEach(r => {
+            // Handle Faculty Mentors specifically
+            if (customHeaders && customHeaders.includes('Faculty Name')) {
+                rows.push([
+                    `"${(r.facultyName || '').replace(/"/g, '""')}"`,
+                    `"${(r.facultyEcode || '—').replace(/"/g, '""')}"`,
+                    `"${(r.studentName || '').replace(/"/g, '""')}"`,
+                    `"${(r.category || '').replace(/"/g, '""')}"`,
+                    `"${(r.facultyAward || '—').replace(/\+/g, ' + ').replace(/\b\w/g, l => l.toUpperCase()).replace(/"/g, '""')}"`
+                ].join(','));
+                return;
+            }
+
             if (Array.isArray(r.categories) && r.categories.length > 0) {
-                // Create a row for each category to include detailed data
-                r.categories.forEach(cat => {
-                    const detailsStr = Object.entries(cat.data || {})
+                // Filter categories based on current tab/filter for accuracy
+                const targetCats = r.categories.filter(cat => {
+                    const catMatch = catFilter === 'all' ? true :
+                        catFilter === 'misc' ? !allCategories.some(ac => ac.id === cat.type) :
+                        cat.type === catFilter;
+                    const approvedMatch = activeTab === 'approved' ? cat.status === 'Approved' : true;
+                    return catMatch && approvedMatch;
+                });
+
+                if (targetCats.length === 0 && (catFilter !== 'all' || activeTab === 'approved')) return;
+
+                (targetCats.length > 0 ? targetCats : [null]).forEach(cat => {
+                    const detailsStr = cat ? Object.entries(cat.data || {})
                         .map(([k, v]) => {
                             const niceK = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                             return `${niceK}: ${v}`;
-                        }).join('; ');
+                        }).join('; ') : '—';
 
-                    // Format award string for CSV readability
-                    const awardVal = (cat.award || 'None')
+                    const awardVal = cat ? (cat.award || '—')
                         .replace(/\+/g, ' + ')
-                        .replace(/\b\w/g, l => l.toUpperCase());
+                        .replace(/\b\w/g, l => l.toUpperCase()) : '—';
 
                     rows.push([
                         `"${(r.name || '').replace(/"/g, '""')}"`,
@@ -990,8 +1070,8 @@ export default function AdminPage({ onLogout }) {
                         `"${(r.uid || '').replace(/"/g, '""')}"`,
                         `"${(r.department || '').replace(/"/g, '""')}"`,
                         `"${(r.cluster || '').replace(/"/g, '""')}"`,
-                        `"${(cat.type || '').charAt(0).toUpperCase() + (cat.type || '').slice(1)}"`,
-                        `"${(cat.status || r.evaluation_status || 'Pending').replace(/"/g, '""')}"`,
+                        `"${cat ? (cat.type || '').charAt(0).toUpperCase() + (cat.type || '').slice(1) : '—'}"`,
+                        `"${cat ? (cat.status || 'Pending').replace(/"/g, '""') : '—'}"`,
                         `"${detailsStr.replace(/"/g, '""')}"`,
                         `"${new Date(r.created_at).toLocaleString()}"`,
                         `"${r.ticket_sent_at ? 'Yes' : 'No'}"`,
@@ -1000,7 +1080,7 @@ export default function AdminPage({ onLogout }) {
                         `"${r.attended_at ? 'Present' : 'Absent'}"`
                     ].join(','));
                 });
-            } else {
+            } else if (activeTab !== 'approved' && catFilter === 'all') {
                 rows.push([
                     `"${(r.name || '').replace(/"/g, '""')}"`,
                     `"${(r.email || '').replace(/"/g, '""')}"`,
@@ -1022,7 +1102,7 @@ export default function AdminPage({ onLogout }) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.setAttribute("download", `${filename.replace('.csv', '')}_${new Date().toISOString().slice(0, 10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1032,6 +1112,24 @@ export default function AdminPage({ onLogout }) {
     const handleExportAllCSV = () => exportToCSV(regs, 'All_Participants');
 
     // ── Sort icon helper ───────────────────────────────────────────────────────
+    const handleSendTestTicket = async () => {
+        const email = prompt("Enter email address for test ticket:", "praveen.n@cuchd.in");
+        if (!email) return;
+        
+        try {
+            setSendingTickets(true);
+            const { data } = await sendTestTicket(email);
+            if (data.success) {
+                alert(`Success: ${data.message}`);
+            }
+        } catch (err) {
+            console.error('Test ticket error:', err);
+            alert(err.response?.data?.error || 'Failed to send test ticket');
+        } finally {
+            setSendingTickets(false);
+        }
+    };
+
     const SortIcon = ({ col }) => sortKey === col
         ? (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)
         : <ChevronDown size={14} style={{ opacity: .3 }} />;
@@ -1123,7 +1221,7 @@ export default function AdminPage({ onLogout }) {
                         onClick={() => setActiveTab('approved')}
                         id="tab-approved"
                     >
-                        <CheckCircle size={16} /> Approved ({approvedRegs.length})
+                        <CheckCircle size={16} /> Approved ({totalApprovedEntries})
                     </button>
                     <button
                         className={`admin-tab ${activeTab === 'attendance' ? 'active' : ''}`}
@@ -1134,6 +1232,13 @@ export default function AdminPage({ onLogout }) {
                         {displayAttendedCount > 0 && (
                             <span className="admin-tab-badge" style={{ background: '#34a853' }}>{displayAttendedCount}</span>
                         )}
+                    </button>
+                    <button
+                        className={`admin-tab ${activeTab === 'mentors' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('mentors')}
+                        id="tab-mentors"
+                    >
+                        <UserPlus size={16} /> Faculty Mentors ({facultyMentors.length})
                     </button>
                     <button
                         className={`admin-tab ${activeTab === 'analytics' ? 'active' : ''}`}
@@ -1159,7 +1264,7 @@ export default function AdminPage({ onLogout }) {
                             <div className="admin-search-wrap">
                                 <Search size={16} className="admin-search-icon" />
                                 <input
-                                    type="search"
+                                    type="text"
                                     className="admin-search-input"
                                     placeholder="Search by name, email, phone, department, cluster…"
                                     value={search}
@@ -1239,10 +1344,10 @@ export default function AdminPage({ onLogout }) {
                                         id="filter-award"
                                         style={{ minWidth: 200 }}
                                     >
-                                        <option value="all">All Awards ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved')).length})</option>
-                                        <option value="momento">Getting Momento ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && c.award === 'momento')).length})</option>
-                                        <option value="certificate">Getting Certificate ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && c.award === 'certificate')).length})</option>
-                                        <option value="none">Not Yet Assigned ({baseRegs.filter(r => Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved' && !c.award)).length})</option>
+                                        <option value="all">All Awards ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => (c.status || r.evaluation_status || 'Pending') === 'Approved').length : 0), 0)})</option>
+                                        <option value="momento">Getting Momento ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && (c.award?.includes('momento'))).length : 0), 0)})</option>
+                                        <option value="certificate">Getting Certificate ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && (c.award?.includes('certificate'))).length : 0), 0)})</option>
+                                        <option value="none">Award Not Yet Assigned ({baseRegs.reduce((sum, r) => sum + (Array.isArray(r.categories) ? r.categories.filter(c => (c.status || r.evaluation_status || 'Pending') === 'Approved' && !c.award).length : 0), 0)})</option>
                                     </select>
                                 </div>
                             )}
@@ -1286,16 +1391,18 @@ export default function AdminPage({ onLogout }) {
                                     <Database size={14} /> Export All
                                 </button>
                                 {activeTab === 'approved' && (
-                                    <button
-                                        className="btn btn-sm"
-                                        style={{ background: '#1a73e8', color: 'white', border: 'none', gap: 6 }}
-                                        onClick={() => setShowSendTicketsModal(true)}
-                                        disabled={baseRegs.length === 0}
-                                        id="btn-send-tickets"
-                                        title={baseRegs.length === 0 ? 'No approved registrations to send tickets to' : `Send tickets to ${baseRegs.length} approved participants`}
-                                    >
-                                        <Mail size={14} /> Send Tickets
-                                    </button>
+                                    <>
+                                        <button
+                                            className="btn btn-sm"
+                                            style={{ background: '#1a73e8', color: 'white', border: 'none', gap: 6 }}
+                                            onClick={() => setShowSendTicketsModal(true)}
+                                            disabled={baseRegs.length === 0}
+                                            id="btn-send-tickets"
+                                            title={baseRegs.length === 0 ? 'No approved registrations to send tickets to' : `Send tickets to ${baseRegs.length} approved participants`}
+                                        >
+                                            <Mail size={14} /> Send Tickets
+                                        </button>
+                                    </>
                                 )}
                             </div>
                             <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
@@ -1331,7 +1438,7 @@ export default function AdminPage({ onLogout }) {
                                                 </th>
                                             )}
                                             <th onClick={() => toggleSort('uid')} className="sortable">
-                                                UID / EID <SortIcon col="uid" />
+                                                {activeTab === 'approved' ? 'UID / Email' : 'UID / EID'} <SortIcon col="uid" />
                                             </th>
                                             <th>Department & Cluster</th>
                                             <th>{activeTab === 'approved' ? 'Approved Categories' : 'Categories Applied'}</th>
@@ -1361,7 +1468,12 @@ export default function AdminPage({ onLogout }) {
                                                 {activeTab !== 'approved' && (
                                                     <td className="admin-td-email">{r.email}</td>
                                                 )}
-                                                <td>{r.uid || <span className="text-muted">—</span>}</td>
+                                                <td>
+                                                    {r.uid || <span className="text-muted">—</span>}
+                                                    {activeTab === 'approved' && (
+                                                        <div style={{ fontSize: '11px', color: '#5f6368', marginTop: '2px' }}>{r.email}</div>
+                                                    )}
+                                                </td>
                                                 <td>
                                                     {r.department || <span className="admin-td-empty">—</span>}
                                                     {r.cluster && <><br /><small className="text-muted">{r.cluster}</small></>}
@@ -1624,6 +1736,91 @@ export default function AdminPage({ onLogout }) {
                                     <option value={100}>100</option>
                                 </select>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── FACULTY MENTORS TAB ── */}
+                {activeTab === 'mentors' && (
+                    <div className="admin-card card">
+                        <div className="admin-card-header" style={{ marginBottom: 20 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <h2><UserPlus size={18} /> Faculty Mentors List</h2>
+                                    <p>Showing <strong>{facultyMentors.length}</strong> mentorship entries from <strong>{uniqueMentorCodes.size}</strong> unique faculty members.</p>
+                                </div>
+                                <button className="btn btn-secondary btn-sm" onClick={() => exportToCSV(facultyMentors, `faculty_mentors_${new Date().toLocaleDateString()}.csv`, [
+                                    'Faculty Name', 'Faculty E-Code', 'Nominated By (Student)', 'Nominated Category', 'Faculty Award'
+                                ])}>
+                                    <Download size={14} /> Export Mentors
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="admin-table-wrap">
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th className="admin-td-num">#</th>
+                                        <th>Faculty Name</th>
+                                        <th>Faculty E-Code</th>
+                                        <th>Nominated By (Student)</th>
+                                        <th>Nominated Category</th>
+                                        <th>Award / Grant</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {facultyMentors.length > 0 ? (
+                                        facultyMentors.map((m, idx) => (
+                                            <tr key={m.id} className="admin-row">
+                                                <td className="admin-td-num">{idx + 1}</td>
+                                                <td style={{ fontWeight: 600, color: '#202124' }}>{m.facultyName}</td>
+                                                <td><span className="badge badge-secondary" style={{ background: '#f1f3f4', color: '#5f6368', border: '1px solid #dadce0' }}>{m.facultyEcode}</span></td>
+                                                <td className="admin-td-name">{m.studentName}</td>
+                                                <td>
+                                                    <span style={{ 
+                                                        padding: '2px 8px', background: '#e8f0fe', color: '#1967d2', 
+                                                        borderRadius: '12px', fontSize: '11px', fontWeight: 600
+                                                    }}>
+                                                        {m.category}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <select
+                                                        className="admin-select-sm"
+                                                        value={m.facultyAward || ''}
+                                                        onChange={(e) => handleFacultyAwardUpdate(m.regId, m.categoryIndex, e.target.value)}
+                                                        style={{
+                                                            fontSize: '11px',
+                                                            padding: '4px 6px',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid #dadce0',
+                                                            background: m.facultyAward ? '#fffbf2' : '#fff',
+                                                            cursor: 'pointer',
+                                                            width: '100%'
+                                                        }}
+                                                    >
+                                                        <option value="">— Select Faculty Award —</option>
+                                                        <option value="certificate">Certificate</option>
+                                                        <option value="momento">Momento</option>
+                                                        {/* <option value="momento+certificate">Momento + Certificate</option>
+                                                        <option value="medal+certificate">Medal + Certificate</option>
+                                                        <option value="badge+certificate">Badge + Certificate</option>
+                                                        <option value="trophy+certificate">Trophy + Certificate</option> */}
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="6" style={{ textAlign: 'center', padding: '40px 0', color: '#5f6368' }}>
+                                                <div style={{ marginBottom: 12 }}><AlertTriangle size={32} style={{ opacity: 0.3 }} /></div>
+                                                No faculty mentors found in approved nominations.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}

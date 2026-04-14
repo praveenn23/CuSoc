@@ -36,6 +36,7 @@ export const updateAdminEvent = (payload) => adminApi.put('/event', payload);
 export const sendTicketEmails = () => adminApi.post('/send-tickets');
 export const markAttendance = (ticketCode) => adminApi.post('/mark-attendance', { ticketCode });
 export const updateEvaluation = (id, status, remarks, categoryIndex = null) => adminApi.put(`/registrations/${id}/evaluation`, { status, remarks, categoryIndex });
-export const updateAward = (id, award, categoryIndex = null) => adminApi.put(`/registrations/${id}/award`, { award, categoryIndex });
+export const updateAward = (id, award, categoryIndex = null, isFaculty = false) => adminApi.put(`/registrations/${id}/award`, { award, categoryIndex, isFaculty });
+export const sendTestTicket = (email) => adminApi.post('/send-test-ticket', { email });
 
 export default adminApi;

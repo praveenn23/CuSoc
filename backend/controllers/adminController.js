@@ -157,7 +157,7 @@ const sendTickets = async (req, res) => {
   try {
     // Fetch registrations that have NOT been sent a ticket yet AND are approved
     const registrations = await Registration.find({ 
-      ticketSentAt: null,
+      ticketSentAt: { $exists: false },
       $or: [
         { evaluation_status: 'Approved' },
         { 'categories.status': 'Approved' }
@@ -167,352 +167,153 @@ const sendTickets = async (req, res) => {
       .limit(5000)
       .lean();
 
-    // Calculate how many APPROVED people already got their ticket
-    const totalApprovedCount = await Registration.countDocuments({
-      $or: [
-        { evaluation_status: 'Approved' },
-        { 'categories.status': 'Approved' }
-      ]
-    });
-    const alreadySent = totalApprovedCount - registrations.length;
-
-    if (!registrations || registrations.length === 0) {
-      return res.json({
-        success: true,
-        message: `All ${totalApprovedCount} approved participants have already received their ticket emails. No new emails sent.`,
-        sent: 0, failed: 0, skipped: alreadySent,
-      });
-    }
-
+    const results = { sent: 0, failed: 0, errors: [] };
     const event = await Event.findOne().lean();
     if (!event) return res.status(404).json({ error: 'Event not found.' });
 
-    const eventDate = new Date(event.date).toLocaleDateString('en-IN', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-    });
-    const eventTime = event.time || new Date(event.date).toLocaleTimeString('en-IN', {
-      hour: '2-digit', minute: '2-digit', hour12: true,
-    });
-
     const CONCURRENCY = 5;
-    const results = { sent: 0, failed: 0, errors: [] };
-
     for (let i = 0; i < registrations.length; i += CONCURRENCY) {
       const chunk = registrations.slice(i, i + CONCURRENCY);
-      await Promise.all(
-        chunk.map(async (reg) => {
-          // Last 4 hex chars of ObjectId (uppercase) — same pattern as before
-          const ticketNo   = `EVT-${reg._id.toString().slice(-4).toUpperCase()}`;
-          const department = reg.department || 'N/A';
-
-          const approvedCategories = Array.isArray(reg.categories)
-            ? reg.categories.filter(c => {
-                const effectiveStatus = c.status || reg.evaluation_status || 'Pending';
-                return effectiveStatus === 'Approved';
-              })
+      await Promise.all(chunk.map(async (reg) => {
+        const ticketNo = `EVT-${reg._id.toString().slice(-4).toUpperCase()}`;
+        const qrText   = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${ticketNo}`;
+        
+        const approvedCategories = Array.isArray(reg.categories)
+            ? reg.categories.filter(c => (c.status || reg.evaluation_status || 'Pending') === 'Approved')
             : [];
-          const approvedCategoryNames = approvedCategories.map(c => 
+        const categoryNames = approvedCategories.map(c => 
             (c.type || '').charAt(0).toUpperCase() + (c.type || '').slice(1)
-          );
+        );
 
-          let selectedCategoryHtml = '';
-          if (approvedCategoryNames.length > 0) {
-            selectedCategoryHtml = `
-                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px;">
-                    <tr>
-                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">Selected For</td>
-                      <td style="font-size:14px;font-weight:700;color:#137333;">${approvedCategoryNames.join(', ')}</td>
-                    </tr>
-                  </table>`;
-          }
-
-          const html = `
+        const html = `
 <!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<html>
+<head><meta charset="UTF-8" /></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Google Sans',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:32px 16px;">
     <tr><td align="center">
-      <table width="100%" cellpadding="0" cellspacing="0"
-        style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 28px rgba(60,64,67,.14);">
-
-        <!-- Header -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 28px rgba(0,0,0,0.1);">
         <tr>
-          <td style="background:linear-gradient(135deg,#1a73e8 0%,#0d47a1 100%);padding:36px 32px;text-align:center;">
-            <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;line-height:1.3;">🎟 Event Ticket Confirmation</h1>
-            <p style="color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px;">Your ticket has been issued successfully!</p>
+          <td style="background:linear-gradient(135deg,#1a73e8 0%,#0d47a1 100%);padding:36px;text-align:center;">
+            <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;">🎟 Event Ticket Confirmation</h1>
           </td>
         </tr>
-
-        <!-- Greeting -->
         <tr>
-          <td style="background:#e8f0fe;padding:20px 32px;text-align:center;border-bottom:1px solid #c5d8fb;">
-            <p style="margin:0;color:#1a73e8;font-size:15px;font-weight:600;">Dear ${reg.name},</p>
-            <p style="margin:6px 0 0;color:#3c4043;font-size:14px;line-height:1.6;">
-              Greetings from the Organizing Team!<br />
-              Thank you for applying to <strong>${event.title}</strong>.<br />
-              We are pleased to inform you that your application has been <strong>approved</strong>!
-            </p>
+          <td style="background:#e8f0fe;padding:24px;text-align:center;border-bottom:1px solid #c5d8fb;">
+            <p style="margin:0;color:#1a73e8;font-size:16px;font-weight:600;">Dear ${reg.name},</p>
+            <p style="margin:8px 0 0;color:#3c4043;font-size:14px;">Your application for <strong>${event.title}</strong> has been approved!</p>
           </td>
         </tr>
-
-        <!-- Ticket Card -->
         <tr>
-          <td style="padding:28px 32px 8px;">
-            <h2 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#202124;">🎫 Event Ticket Details</h2>
-            <table width="100%" cellpadding="0" cellspacing="0"
-              style="background:#f8f9fa;border-radius:12px;border:2px dashed #c5d8fb;overflow:hidden;">
-              <tr>
-                <td style="padding:20px 24px;">
-                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
-                    <tr>
-                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;padding-bottom:2px;">Ticket No.</td>
-                      <td style="font-size:18px;font-weight:700;color:#1a73e8;letter-spacing:1px;">${ticketNo}</td>
-                    </tr>
-                  </table>
-                  <hr style="border:none;border-top:1px solid #e0e0e0;margin:0 0 14px;" />
-                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
-                    <tr>
-                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">Name</td>
-                      <td style="font-size:14px;font-weight:600;color:#202124;">${reg.name}</td>
-                    </tr>
-                  </table>
-                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
-                    <tr>
-                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">Department</td>
-                      <td style="font-size:14px;font-weight:500;color:#202124;">${department}</td>
-                    </tr>
-                  </table>
-                  <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td width="140" style="font-size:12px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;">University Email</td>
-                      <td style="font-size:14px;font-weight:500;color:#202124;">${reg.email}</td>
-                    </tr>
-                  </table>
-                  ${selectedCategoryHtml}
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- Event Details -->
-        <tr>
-          <td style="padding:20px 32px 8px;">
-            <h2 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#202124;">📌 Event Details</h2>
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
-              <tr>
-                <td width="40" valign="top"><div style="width:36px;height:36px;background:#e8f0fe;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">📅</div></td>
-                <td style="padding-left:12px;vertical-align:middle;">
-                  <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Date</div>
-                  <div style="font-size:14px;font-weight:500;color:#202124;">${eventDate}</div>
-                </td>
-              </tr>
-            </table>
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
-              <tr>
-                <td width="40" valign="top"><div style="width:36px;height:36px;background:#e6f4ea;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">🕐</div></td>
-                <td style="padding-left:12px;vertical-align:middle;">
-                  <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Time</div>
-                  <div style="font-size:14px;font-weight:500;color:#202124;">${eventTime}</div>
-                </td>
-              </tr>
-            </table>
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
-              <tr>
-                <td width="40" valign="top"><div style="width:36px;height:36px;background:#fce8e6;border-radius:8px;text-align:center;line-height:36px;font-size:18px;">📍</div></td>
-                <td style="padding-left:12px;vertical-align:middle;">
-                  <div style="font-size:11px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Venue</div>
-                  <div style="font-size:14px;font-weight:500;color:#202124;">${event.venue}</div>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- Important Instructions -->
-        <tr>
-          <td style="padding:16px 32px 24px;">
-            <div style="background:#fffde7;border-radius:12px;padding:18px 22px;border:1px solid #ffe082;">
-              <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#e65100;">📋 Important Instructions</p>
-              <ul style="margin:0;padding-left:18px;color:#3c4043;font-size:13px;line-height:2;">
-                <li>This email serves as your <strong>official event entry ticket</strong>.</li>
-                <li>Your University Email ID will be <strong>verified at the venue</strong> by the organizing team.</li>
-                <li>Duty Leave (DL) attendance will be granted only after successful verification at the venue.</li>
-                <li>Please carry your <strong>University ID Card</strong> for identity confirmation.</li>
-                <li>Kindly ensure that the above details are correct. In case of any discrepancy, contact the organizing team <strong>before the event date</strong>.</li>
-              </ul>
+          <td style="padding:28px 32px;">
+            <div style="background:#f8f9fa;border-radius:12px;border:2px dashed #c5d8fb;padding:24px;text-align:center;">
+              <img src="${qrText}" width="160" height="160" style="margin-bottom:16px;border-radius:8px;" />
+              <p style="margin:0;font-size:14px;color:#1a73e8;font-weight:700;letter-spacing:1px;">TICKET ID: ${ticketNo}</p>
+              <h2 style="margin:16px 0 4px;font-size:20px;">${reg.name}</h2>
+              <p style="margin:0;color:#5f6368;font-size:13px;">${reg.department || 'N/A'}</p>
+              ${categoryNames.length > 0 ? `<p style="margin:12px 0 0;color:#137333;font-weight:700;font-size:14px;">Approved For: ${categoryNames.join(', ')}</p>` : ''}
+            </div>
+            <div style="margin-top:24px;">
+              <h3 style="font-size:15px;color:#202124;">📌 Event Details</h3>
+              <p style="margin:6px 0;font-size:13px;"><b>Venue:</b> ${event.venue}</p>
+              <p style="margin:6px 0;font-size:13px;"><b>Instruction:</b> Please carry your University ID Card.</p>
             </div>
           </td>
         </tr>
-
-        <!-- ACO Approved Badge -->
         <tr>
-          <td style="padding:0 32px 20px;">
-            <div style="background:#e8f5e9;border-radius:12px;padding:16px 20px;border:1px solid #a5d6a7;">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="40" valign="top" style="text-align:center;font-size:22px;padding-top:2px;">✅</td>
-                  <td style="padding-left:12px;vertical-align:top;">
-                    <div style="font-size:13px;font-weight:700;color:#1b5e20;margin-bottom:4px;">ACO Approval — University Level Co-Curricular Club</div>
-                    <div style="font-size:12px;color:#2e7d32;line-height:1.7;margin-bottom:12px;">
-                      For applying Duty Leave (DL) for this event, kindly take prior approval from ACO / Assistant Dean OAA on the mentioned category's duty leave format.
-                    </div>
-                    <a href="https://drive.google.com/file/d/11oQHrEJwYyaD52yndoVyRtQ0MGvCktJx/view?usp=sharing"
-                      target="_blank"
-                      style="display:inline-block;background:#1b5e20;color:#ffffff;font-size:12px;font-weight:700;padding:9px 18px;border-radius:8px;text-decoration:none;letter-spacing:.3px;">
-                      📄 View DL Format Document
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </div>
+          <td style="padding:20px;text-align:center;background:#f8f9fa;border-top:1px solid #e0e0e0;">
+            <p style="margin:0;font-size:12px;color:#9aa0a6;">© ABHYUTTHANAM, Chandigarh University</p>
           </td>
         </tr>
-
-        <!-- WhatsApp Group -->
-        <tr>
-          <td style="padding:0 32px 24px;">
-            <div style="background:#e7f7ee;border-radius:12px;padding:18px 22px;border:1px solid #b2dfdb;text-align:center;">
-              <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#00695c;">💬 Join Our WhatsApp Group</p>
-              <p style="margin:0 0 14px;font-size:13px;color:#3c4043;line-height:1.6;">
-                Stay updated with event announcements, schedules, and last-minute changes.<br />
-                Join our official WhatsApp group for participants:
-              </p>
-              <a href="https://chat.whatsapp.com/GOzVfSfxsggCrMJFAGnucs"
-                target="_blank"
-                style="display:inline-block;background:#25d366;color:#ffffff;font-size:14px;font-weight:700;padding:12px 28px;border-radius:50px;text-decoration:none;letter-spacing:.3px;">
-                🟢 Join WhatsApp Group
-              </a>
-            </div>
-          </td>
-        </tr>
-
-        <!-- Best Regards -->
-        <tr>
-          <td style="padding:0 32px 24px;background:#f8f9fa;border-top:1px solid #e0e0e0;">
-            <p style="margin:16px 0 6px;font-size:14px;font-weight:600;color:#202124;">We look forward to your active participation!</p>
-            <p style="margin:0;font-size:13px;color:#5f6368;line-height:2;">
-              Best Regards,<br />
-              <strong>ABHYUTTHANAM Organizing Team</strong><br />
-              ${event.title}<br />
-              Chandigarh University<br />
-              <span style="color:#9aa0a6;font-size:12px;">Approved under: University Level (Co-Curricular Clubs) | ACO Certified</span>
-            </p>
-          </td>
-        </tr>
-
-        <!-- Footer strip -->
-        <tr><td style="height:4px;background:linear-gradient(90deg,#ea4335 25%,#fbbc04 25% 50%,#34a853 50% 75%,#1a73e8 75%);"></td></tr>
-        <tr>
-          <td style="padding:14px 32px;text-align:center;">
-            <p style="margin:0;font-size:12px;color:#9aa0a6;">
-              © ${new Date().getFullYear()} ABHYUTTHANAM, Chandigarh University — See you there! 🎉
-            </p>
-          </td>
-        </tr>
-
       </table>
     </td></tr>
   </table>
 </body>
 </html>`;
 
-          try {
-            await transporter.sendMail({
-              from: `"ABHYUTTHANAM" <${process.env.EMAIL_FROM}>`,
-              to: reg.email,
-              subject: `🎟 Your Event Ticket Confirmation – ABHYUTTHANAM | ${ticketNo}`,
-              html,
-            });
-            results.sent++;
-
-            // Stamp ticketSentAt so this person is never emailed again
-            await Registration.findByIdAndUpdate(reg._id, { ticketSentAt: new Date() });
-          } catch (mailErr) {
-            results.failed++;
-            results.errors.push({ email: reg.email, error: mailErr.message });
-            console.error(`Ticket email failed for ${reg.email}:`, mailErr.message);
-          }
-        })
-      );
+        try {
+          await transporter.sendMail({
+            from: `"ABHYUTTHANAM" <${process.env.EMAIL_FROM}>`,
+            to: reg.email,
+            subject: `🎟 Your Event Ticket Confirmation – ABHYUTTHANAM | ${ticketNo}`,
+            html,
+          });
+          results.sent++;
+          await Registration.findByIdAndUpdate(reg._id, { ticketSentAt: new Date() });
+        } catch (mailErr) {
+          results.failed++;
+          results.errors.push({ email: reg.email, error: mailErr.message });
+        }
+      }));
     }
 
-    console.log(`✅ Ticket blast done — sent: ${results.sent}, failed: ${results.failed}, skipped: ${alreadySent}`);
     return res.json({
       success: true,
-      message: `Tickets sent to ${results.sent} new participant(s). ${alreadySent > 0 ? `${alreadySent} already emailed (skipped).` : ''} Failed: ${results.failed}.`,
-      sent:    results.sent,
-      failed:  results.failed,
-      skipped: alreadySent,
-      ...(results.errors.length ? { errors: results.errors } : {}),
+      message: `Tickets sent to ${results.sent} participant(s). Failed: ${results.failed}.`,
+      sent: results.sent,
+      failed: results.failed,
+      errors: results.errors
     });
   } catch (err) {
     console.error('sendTickets error:', err.message);
-    return res.status(500).json({ error: 'Failed to send ticket emails.' });
+    return res.status(500).json({ error: 'Failed to send tickets.' });
   }
 };
 
-// ── POST /admin/mark-attendance ──────────────────────────────────────────────
+const sendTestTicket = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Test email is required' });
+
+    const event = await Event.findOne().lean() || { title: 'ABHYUTTHANAM Test', venue: 'Main Arena', date: new Date() };
+    const sample = await Registration.findOne({ categories: { $elemMatch: { status: 'Approved' } } }).lean();
+    
+    const reg = sample || { name: 'Test Administrator', email: email, department: 'Admin Office', uid: 'ADMIN-TEST' };
+    const ticketNo = 'TEST-0000';
+    const qrText   = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${ticketNo}`;
+    
+    // Inline template for now to ensure it works, will refactor fully later if needed
+    const html = `<html><body><h1>Test Ticket - ${event.title}</h1><p>Welcome ${reg.name}</p></body></html>`; 
+
+    await transporter.sendMail({
+      from: `"ABHYUTTHANAM (Test Mode)" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: `[TEST TICKET] Your Event Ticket – ABHYUTTHANAM`,
+      html: `
+        <div style="font-family: Arial; padding: 20px; border: 1px solid #ddd; max-width: 500px">
+          <h2>🎟 Test Ticket</h2>
+          <p>This is a preview of the ticket for <b>${event.title}</b>.</p>
+          <hr />
+          <img src="${qrText}" width="150" />
+          <h3>Name: ${reg.name}</h3>
+          <p>UID: ${reg.uid || 'N/A'}</p>
+          <p>Venue: ${event.venue}</p>
+        </div>`
+    });
+
+    return res.json({ success: true, message: `Test ticket sent to ${email}` });
+  } catch (err) {
+    console.error('sendTestTicket error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
 const markAttendance = async (req, res) => {
   try {
     const { ticketCode } = req.body;
+    const code = ticketCode?.trim().toUpperCase();
+    if (!code) return res.status(400).json({ error: 'Ticket code required' });
 
-    if (!ticketCode || typeof ticketCode !== 'string') {
-      return res.status(400).json({ error: 'ticketCode is required.' });
-    }
+    const registrations = await Registration.find().lean().limit(10000);
+    const reg = registrations.find(r => r._id.toString().slice(-4).toUpperCase() === code);
 
-    const code = ticketCode.trim().toUpperCase();
-    if (!/^[A-Z0-9]{4}$/.test(code)) {
-      return res.status(400).json({ error: 'Ticket code must be exactly 4 alphanumeric characters.' });
-    }
+    if (!reg) return res.status(404).json({ error: `Not found: ${code}` });
+    if (reg.attendedAt) return res.status(400).json({ error: 'Already marked present' });
 
-    // Find registration by last 4 chars of the MongoDB ObjectId (hex)
-    const registrations = await Registration.find().lean().limit(5000);
-    const reg = registrations.find(
-      r => r._id.toString().slice(-4).toUpperCase() === code
-    ) ?? null;
-
-    if (!reg) {
-      return res.status(404).json({
-        error: `No registration found with ticket code EVT-${code}. Please double-check the code.`,
-      });
-    }
-
-    // Duplicate scan check
-    if (reg.attendedAt) {
-      return res.status(409).json({
-        error: 'Already marked present!',
-        alreadyPresent: true,
-        registration: {
-          name:       reg.name,
-          email:      reg.email,
-          department: reg.department,
-          cluster:    reg.cluster,
-          attendedAt: reg.attendedAt,
-          ticketCode: `EVT-${code}`,
-        },
-      });
-    }
-
-    // Mark as attended
     await Registration.findByIdAndUpdate(reg._id, { attendedAt: new Date() });
-
-    console.log(`✅ Attendance marked for ${reg.name} (EVT-${code})`);
-    return res.json({
-      success: true,
-      message: `Attendance marked for ${reg.name}`,
-      registration: {
-        name:       reg.name,
-        email:      reg.email,
-        department: reg.department,
-        cluster:    reg.cluster,
-        ticketCode: `EVT-${code}`,
-      },
-    });
+    return res.json({ success: true, message: `Checked in: ${reg.name}` });
   } catch (err) {
-    console.error('markAttendance error:', err.message);
-    return res.status(500).json({ error: 'Failed to mark attendance.' });
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -556,7 +357,7 @@ const updateEvaluation = async (req, res) => {
 const updateAward = async (req, res) => {
   try {
     const { id } = req.params;
-    const { award, categoryIndex } = req.body;
+    const { award, categoryIndex, isFaculty } = req.body;
 
     if (!id) return res.status(400).json({ error: 'Missing id' });
 
@@ -571,7 +372,8 @@ const updateAward = async (req, res) => {
         return res.status(400).json({ error: 'Invalid category index' });
       }
       const categories = [...reg.categories];
-      categories[idx] = { ...categories[idx], award };
+      const field = isFaculty ? 'faculty_award' : 'award';
+      categories[idx] = { ...categories[idx], [field]: award };
       updatePayload = { categories };
     } else {
       updatePayload = { award };
@@ -585,4 +387,4 @@ const updateAward = async (req, res) => {
   }
 };
 
-module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance, updateEvaluation, updateAward };
+module.exports = { getStats, getRegistrations, deleteRegistration, getEvent, updateEvent, adminLogin, sendTickets, markAttendance, updateEvaluation, updateAward, sendTestTicket };
