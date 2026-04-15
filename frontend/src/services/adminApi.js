@@ -8,9 +8,6 @@ const adminApi = axios.create({
     timeout: 300000, // 5 minutes timeout for mass operations like send-tickets
 });
 
-
-
-
 // Attach the admin token from localStorage to every request
 adminApi.interceptors.request.use((config) => {
     const token = localStorage.getItem('admin_token');
@@ -41,5 +38,8 @@ export const markAttendance = (ticketCode) => adminApi.post('/mark-attendance', 
 export const updateEvaluation = (id, status, remarks, categoryIndex = null) => adminApi.put(`/registrations/${id}/evaluation`, { status, remarks, categoryIndex });
 export const updateAward = (id, award, categoryIndex = null, isFaculty = false) => adminApi.put(`/registrations/${id}/award`, { award, categoryIndex, isFaculty });
 export const sendTestTicket = (email) => adminApi.post('/send-test-ticket', { email });
+
+// ── Add Awardee: POST to backend → inserts into MongoDB ──────────────────────
+export const addAwardee = (payload) => adminApi.post('/registrations/add', payload);
 
 export default adminApi;

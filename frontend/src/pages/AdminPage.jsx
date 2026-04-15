@@ -3,12 +3,12 @@ import {
     Users, Ticket, BarChart2, LogOut, Trash2, RefreshCw,
     Search, Edit3, Save, X, ChevronDown, ChevronUp, AlertTriangle,
     CheckCircle, Calendar, MapPin, Clock, AlignLeft, Hash, Mail, Download,
-    ScanLine, UserCheck, UserPlus, Building2, Link, Palette, Database,
+    ScanLine, UserCheck, UserPlus, Building2, Link, Palette, Database, PlusCircle,
 } from 'lucide-react';
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
     fetchAdminEvent, updateAdminEvent, sendTicketEmails, markAttendance,
-    updateEvaluation, updateAward, sendTestTicket,
+    updateEvaluation, updateAward, sendTestTicket, addAwardee,
 } from '../services/adminApi';
 import './AdminPage.css';
 import jsPDF from 'jspdf';
@@ -179,6 +179,499 @@ function ViewDetailsModal({ registration, onCancel, onUpdateStatus, onUpdateCate
                             ))}
                         </div>
                     )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── Add Awardee Modal ────────────────────────────────────────────────────────
+const AWARDEE_CLUSTERS = ['Engineering', 'Management', 'Liberal Arts and Humanities', 'Science'];
+const AWARDEE_DEPARTMENTS = [
+    'Chemistry', 'Mathematics', 'Physics', 'Bio-Technology', 'Bio-Sciences', 'Agriculture',
+    'Computer Science & Engineering 2nd Year', 'Computer Science & Engineering 3rd Year',
+    'Computer Science & Engineering 4th Year', 'Engineering Foundation 1st Year (Batch 1)',
+    'Engineering Foundation 1st Year (Batch 2)', 'Engineering Foundation 1st Year (Batch 3)',
+    'Engineering Foundation 1st Year (Batch 4)', 'Engineering Foundation 1st Year (Batch 5)',
+    'Civil Engineering', 'Automobile Engineering', 'Electronics & Communication Engineering',
+    'Electrical Engineering', 'Biotechnology & Food Engineering', 'Mechanical Engineering',
+    'Petroleum Engineering', 'Chemical Engineering', 'Mechatronics Engineering',
+    'Aerospace Engineering', 'UIC — BCA', 'UIC — MCA', 'AIT — CSE', 'UIPS',
+    'Forensic Science & Toxicology', 'Physiotherapy', 'Medical Lab Technology', 'Optometry',
+    'Nursing', 'Nutrition & Dietetics', 'UITTR', 'UIPES', 'Interior Design', 'Industrial Design',
+    'Fine Arts', 'Fashion & Design', 'UILAH', 'Architecture', 'Animation, VFX & Gaming',
+    'Psychology', 'Film Studies', 'UIMS', 'TTM', 'HHM', 'Airlines', 'BA-LLB', 'BBA-LLB',
+    'B.COM-LLB', 'LLB-LLM', 'Commerce', 'BBA', 'MBA', 'AIT — MBA',
+    'Global School of Finance & Accounting', 'Economics', 'AIT — CSE (AIML)', 'ME — CSE',
+    'English', 'BBA APEX', 'Animation, VFX & Gaming (UIFVA)',
+];
+const AWARDEE_CATEGORIES = [
+    { id: 'research', label: 'Research/Grant Projects', emoji: '🔬' },
+    { id: 'innovation', label: 'Global Professional Certification', emoji: '🎖️' },
+    { id: 'entrepreneurship', label: 'Innovation & Entrepreneurship', emoji: '🚀' },
+    { id: 'competitions', label: 'Competitions & Hackathons', emoji: '🏆' },
+    { id: 'patents', label: 'Innovation & Patents', emoji: '📜' },
+    { id: 'leadership', label: 'Leadership', emoji: '🎓' },
+    { id: 'other', label: 'Other Govt Exams & Awards', emoji: '✨' },
+];
+
+const BLANK_CAT_DATA = {
+    research: () => ({ project_type: '', research_name: '', level: '', fund_amount: '', org_name: '', mentored_by: false, faculty_name: '', faculty_ecode: '' }),
+    innovation: () => ({ cert_title: '', description: '', mentored_by: false, faculty_name: '', faculty_ecode: '' }),
+    entrepreneurship: () => ({ startup_name: '', reg_status: '', reg_number: '', trl_stage: '', mentored_by: false, faculty_name: '', faculty_ecode: '' }),
+    competitions: () => ({ comp_name: '', level: '', rank: '', event_date: '', org_body: '', org_name: '', prize_money: '', participation_count: '', role: '', website: '', description: '', goodies_details: '', mentored_by: false, faculty_name: '', faculty_ecode: '' }),
+    patents: () => ({ patent_title: '', app_number: '', status: 'Granted', grant_date: '', patent_office: '', applicant_role: '', mentored_by: false, faculty_name: '', faculty_ecode: '' }),
+    leadership: () => ({ club_name: '', position: '', tenure: '2024-26', members_converted: '', awareness_sessions: '', achievements: '', mentored: false, mentored_team_name: '', mentored_comp_name: '', mentored_by: false, faculty_name: '', faculty_ecode: '' }),
+    other: () => ({ category_type: '', award_name: '', society: '', mentored_by: false, faculty_name: '', faculty_ecode: '' }),
+};
+
+function AddAwardeeModal({ onClose, onAdded }) {
+    const [step, setStep] = useState('basic'); // 'basic' | 'categories' | 'confirm'
+    const [common, setCommon] = useState({ name: '', email: '', uid: '', cluster: '', department: '' });
+    const [selectedCats, setSelectedCats] = useState([]);
+    const [catData, setCatData] = useState({});
+    const [errors, setErrors] = useState({});
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
+
+    const setField = (field, val) => {
+        setCommon(p => ({ ...p, [field]: val }));
+        setErrors(p => ({ ...p, [field]: '' }));
+    };
+
+    const toggleCat = (id) => {
+        setSelectedCats(prev =>
+            prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+        );
+        if (!catData[id]) setCatData(p => ({ ...p, [id]: BLANK_CAT_DATA[id]() }));
+        setErrors(p => ({ ...p, selectedCats: '' }));
+    };
+
+    const setCatField = (catId, field, val) => {
+        setCatData(p => ({ ...p, [catId]: { ...(p[catId] || {}), [field]: val } }));
+    };
+
+    const validateBasic = () => {
+        const e = {};
+        if (!common.name.trim()) e.name = 'Required';
+        if (!common.email.trim()) e.email = 'Required';
+        if (!common.uid.trim()) e.uid = 'Required';
+        if (!common.cluster) e.cluster = 'Required';
+        if (!common.department) e.department = 'Required';
+        if (selectedCats.length === 0) e.selectedCats = 'Select at least one category';
+        setErrors(e);
+        return Object.keys(e).length === 0;
+    };
+
+    const handleSubmit = async () => {
+        setSaveError('');
+        setSaving(true);
+        try {
+            const categories = selectedCats.map(catId => ({
+                type: catId,
+                status: 'Approved',
+                data: { ...(catData[catId] || {}) },
+            }));
+            const payload = {
+                name: common.name.trim(),
+                email: common.email.trim(),
+                uid: common.uid.trim(),
+                cluster: common.cluster,
+                department: common.department,
+                evaluation_status: 'Approved',
+                categories,
+            };
+            const { data } = await addAwardee(payload);
+            onAdded(data.registration, data.seatAction);
+            onClose();
+        } catch (err) {
+            setSaveError(err.response?.data?.error || err.message || 'Failed to add awardee.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const inputCls = (field) => `form-input${errors[field] ? ' error' : ''}`;
+    const selCls = (field) => `form-input${errors[field] ? ' error' : ''}`;
+
+    return (
+        <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" style={{ padding: '20px', alignItems: 'flex-start', paddingTop: 40 }}>
+            <div className="modal-box" onClick={e => e.stopPropagation()} style={{
+                maxWidth: 680, width: '100%', maxHeight: 'calc(100vh - 80px)',
+                display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden',
+                borderRadius: 16, boxShadow: '0 8px 40px rgba(0,0,0,0.18)'
+            }}>
+                {/* Header */}
+                <div style={{
+                    padding: '20px 24px', background: 'linear-gradient(135deg, #1a73e8 0%, #0f52ba 100%)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                    <div>
+                        <div style={{ fontWeight: 700, fontSize: 18, color: '#fff', display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <PlusCircle size={20} /> Add Awardee
+                        </div>
+                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>
+                            Manually add a participant — they will be pre-approved and appear in both All & Approved tabs.
+                        </div>
+                    </div>
+                    <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', color: '#fff' }}>
+                        <X size={18} />
+                    </button>
+                </div>
+
+                {/* Body */}
+                <div style={{ overflowY: 'auto', flex: 1, padding: '24px' }}>
+
+                    {/* ── Basic Info ── */}
+                    <div style={{ marginBottom: 28 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#1a73e8', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ background: '#1a73e8', color: '#fff', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>1</span>
+                            Participant Info
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
+                            <div className="form-group">
+                                <label className="form-label">Full Name *</label>
+                                <input className={inputCls('name')} value={common.name} onChange={e => setField('name', e.target.value)} placeholder="e.g. Harshvardhan Rao" />
+                                {errors.name && <span style={{ color: '#c5221f', fontSize: 12 }}>{errors.name}</span>}
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Email *</label>
+                                <input className={inputCls('email')} type="email" value={common.email} onChange={e => setField('email', e.target.value)} placeholder="e.g. student@cuchd.in" />
+                                {errors.email && <span style={{ color: '#c5221f', fontSize: 12 }}>{errors.email}</span>}
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">UID / EID *</label>
+                                <input className={inputCls('uid')} value={common.uid} onChange={e => setField('uid', e.target.value)} placeholder="e.g. 23BCE1234" />
+                                {errors.uid && <span style={{ color: '#c5221f', fontSize: 12 }}>{errors.uid}</span>}
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Cluster *</label>
+                                <select className={selCls('cluster')} value={common.cluster} onChange={e => setField('cluster', e.target.value)}>
+                                    <option value="">— Select Cluster —</option>
+                                    {AWARDEE_CLUSTERS.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                {errors.cluster && <span style={{ color: '#c5221f', fontSize: 12 }}>{errors.cluster}</span>}
+                            </div>
+                            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                <label className="form-label">Department *</label>
+                                <select className={selCls('department')} value={common.department} onChange={e => setField('department', e.target.value)}>
+                                    <option value="">— Select Department —</option>
+                                    {AWARDEE_DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                                {errors.department && <span style={{ color: '#c5221f', fontSize: 12 }}>{errors.department}</span>}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── Category Selection ── */}
+                    <div style={{ marginBottom: 28 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#1a73e8', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ background: '#1a73e8', color: '#fff', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>2</span>
+                            Award Categories
+                            {errors.selectedCats && <span style={{ color: '#c5221f', fontSize: 12, fontWeight: 400 }}>— {errors.selectedCats}</span>}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+                            {AWARDEE_CATEGORIES.map(cat => (
+                                <button
+                                    key={cat.id}
+                                    type="button"
+                                    onClick={() => toggleCat(cat.id)}
+                                    style={{
+                                        padding: '10px 14px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                                        border: selectedCats.includes(cat.id) ? '2px solid #1a73e8' : '2px solid #e8eaed',
+                                        background: selectedCats.includes(cat.id) ? '#e8f0fe' : '#fafafa',
+                                        color: selectedCats.includes(cat.id) ? '#1a73e8' : '#3c4043',
+                                        fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8,
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <span style={{ fontSize: 18 }}>{cat.emoji}</span>
+                                    <span>{cat.label}</span>
+                                    {selectedCats.includes(cat.id) && <CheckCircle size={14} style={{ marginLeft: 'auto', flexShrink: 0 }} />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ── Per-Category Fields ── */}
+                    {selectedCats.length > 0 && (
+                        <div style={{ marginBottom: 28 }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#1a73e8', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ background: '#1a73e8', color: '#fff', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>3</span>
+                                Category Details
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                {selectedCats.map(catId => {
+                                    const cat = AWARDEE_CATEGORIES.find(c => c.id === catId);
+                                    const d = catData[catId] || {};
+                                    const upd = (f, v) => setCatField(catId, f, v);
+                                    return (
+                                        <div key={catId} style={{ border: '1.5px solid #e8eaed', borderRadius: 12, overflow: 'hidden' }}>
+                                            <div style={{ background: '#f1f3f4', padding: '10px 16px', fontWeight: 700, fontSize: 14, color: '#202124', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #e8eaed' }}>
+                                                <span>{cat?.emoji}</span> {cat?.label}
+                                                <span style={{ marginLeft: 'auto', background: '#e6f4ea', color: '#137333', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>✅ Pre-Approved</span>
+                                            </div>
+                                            <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
+                                                {/* Research */}
+                                                {catId === 'research' && (<>
+                                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                                        <label className="form-label">Project Type *</label>
+                                                        <select className="form-input" value={d.project_type || ''} onChange={e => upd('project_type', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['Project Funding','Paper Presentation Award','Research/Grant Project','Societal Impact Project','Ongoing Govt/DST/Industry Funded Project'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Research Name *</label>
+                                                        <input className="form-input" value={d.research_name || ''} onChange={e => upd('research_name', e.target.value)} placeholder="Title of research" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Level *</label>
+                                                        <select className="form-input" value={d.level || ''} onChange={e => upd('level', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['National','International','College','State','Industry'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Fund Amount (₹)</label>
+                                                        <input className="form-input" type="number" value={d.fund_amount || ''} onChange={e => upd('fund_amount', e.target.value)} placeholder="0" min="0" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Organization Name *</label>
+                                                        <input className="form-input" value={d.org_name || ''} onChange={e => upd('org_name', e.target.value)} placeholder="e.g. DST, IEEE" />
+                                                    </div>
+                                                </>)}
+                                                {/* Innovation */}
+                                                {catId === 'innovation' && (<>
+                                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                                        <label className="form-label">Certification Title *</label>
+                                                        <input className="form-input" value={d.cert_title || ''} onChange={e => upd('cert_title', e.target.value)} placeholder="e.g. AWS Certified Solutions Architect" />
+                                                    </div>
+                                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                                        <label className="form-label">Certification Description</label>
+                                                        <textarea className="form-input" rows={3} value={d.description || ''} onChange={e => upd('description', e.target.value)} placeholder="Brief significance of this certification..." style={{ resize: 'vertical' }} />
+                                                    </div>
+                                                </>)}
+                                                {/* Entrepreneurship */}
+                                                {catId === 'entrepreneurship' && (<>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Startup Name *</label>
+                                                        <input className="form-input" value={d.startup_name || ''} onChange={e => upd('startup_name', e.target.value)} placeholder="Your startup name" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Registration Status</label>
+                                                        <select className="form-input" value={d.reg_status || ''} onChange={e => upd('reg_status', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['Ongoing','LLP','Pvt Ltd','Under Process'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Registration Number</label>
+                                                        <input className="form-input" value={d.reg_number || ''} onChange={e => upd('reg_number', e.target.value)} placeholder="e.g. U72200PB2023PTC1234" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">TRL Stage</label>
+                                                        <select className="form-input" value={d.trl_stage || ''} onChange={e => upd('trl_stage', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['4','5','6','7'].map(v => <option key={v} value={v}>TRL {v}</option>)}
+                                                        </select>
+                                                    </div>
+                                                </>)}
+                                                {/* Competitions */}
+                                                {catId === 'competitions' && (<>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Competition Name *</label>
+                                                        <input className="form-input" value={d.comp_name || ''} onChange={e => upd('comp_name', e.target.value)} placeholder="e.g. Smart India Hackathon" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Level</label>
+                                                        <select className="form-input" value={d.level || ''} onChange={e => upd('level', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['International','National','State'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Rank / Position</label>
+                                                        <input className="form-input" value={d.rank || ''} onChange={e => upd('rank', e.target.value)} placeholder="e.g. 1st, Runner Up" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Event Date</label>
+                                                        <input className="form-input" type="date" value={d.event_date || ''} onChange={e => upd('event_date', e.target.value)} />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Organizing Body</label>
+                                                        <select className="form-input" value={d.org_body || ''} onChange={e => upd('org_body', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['Government','Industry','State'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Organization Name</label>
+                                                        <input className="form-input" value={d.org_name || ''} onChange={e => upd('org_name', e.target.value)} placeholder="e.g. Ministry of Education" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Prize Money (₹)</label>
+                                                        <input className="form-input" type="number" value={d.prize_money || ''} onChange={e => upd('prize_money', e.target.value)} placeholder="0" min="0" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Participation Count</label>
+                                                        <input className="form-input" type="number" value={d.participation_count || ''} onChange={e => upd('participation_count', e.target.value)} placeholder="e.g. 150" min="1" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Role</label>
+                                                        <select className="form-input" value={d.role || ''} onChange={e => upd('role', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['Team Leader','Member'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Competition Website</label>
+                                                        <input className="form-input" type="url" value={d.website || ''} onChange={e => upd('website', e.target.value)} placeholder="https://..." />
+                                                    </div>
+                                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                                        <label className="form-label">Description</label>
+                                                        <textarea className="form-input" rows={2} value={d.description || ''} onChange={e => upd('description', e.target.value)} placeholder="Brief description of your achievement..." style={{ resize: 'vertical' }} />
+                                                    </div>
+                                                </>)}
+                                                {/* Patents */}
+                                                {catId === 'patents' && (<>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Patent Title *</label>
+                                                        <input className="form-input" value={d.patent_title || ''} onChange={e => upd('patent_title', e.target.value)} placeholder="e.g. Smart Energy Grid System" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Application Number</label>
+                                                        <input className="form-input" value={d.app_number || ''} onChange={e => upd('app_number', e.target.value)} placeholder="e.g. 202311012345" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Status</label>
+                                                        <select className="form-input" value={d.status || 'Granted'} onChange={e => upd('status', e.target.value)}>
+                                                            <option value="Granted">Granted</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Grant Date</label>
+                                                        <input className="form-input" type="date" value={d.grant_date || ''} onChange={e => upd('grant_date', e.target.value)} />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Patent Office</label>
+                                                        <select className="form-input" value={d.patent_office || ''} onChange={e => upd('patent_office', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['Indian','US','International'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Applicant Role</label>
+                                                        <select className="form-input" value={d.applicant_role || ''} onChange={e => upd('applicant_role', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['Sole','Co-applicant'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+                                                </>)}
+                                                {/* Leadership */}
+                                                {catId === 'leadership' && (<>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Club Name *</label>
+                                                        <input className="form-input" value={d.club_name || ''} onChange={e => upd('club_name', e.target.value)} placeholder="e.g. ASTRONOMY CLUB" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Position</label>
+                                                        <select className="form-input" value={d.position || ''} onChange={e => upd('position', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['Secretary','Jt. Secretary'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Tenure</label>
+                                                        <input className="form-input" value={d.tenure || '2024-26'} readOnly style={{ background: 'var(--bg)', cursor: 'not-allowed', color: 'var(--text-secondary)' }} />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Members Converted to Core</label>
+                                                        <input className="form-input" type="number" value={d.members_converted || ''} onChange={e => upd('members_converted', e.target.value)} placeholder="0" min="0" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label className="form-label">Awareness Sessions</label>
+                                                        <input className="form-input" type="number" value={d.awareness_sessions || ''} onChange={e => upd('awareness_sessions', e.target.value)} placeholder="0" min="0" />
+                                                    </div>
+                                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                                        <label className="form-label">Achievements During Tenure</label>
+                                                        <input className="form-input" value={d.achievements || ''} onChange={e => upd('achievements', e.target.value)} placeholder="Key achievements..." />
+                                                    </div>
+                                                </>)}
+                                                {/* Other */}
+                                                {catId === 'other' && (<>
+                                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                                        <label className="form-label">Option Type *</label>
+                                                        <select className="form-input" value={d.category_type || ''} onChange={e => upd('category_type', e.target.value)}>
+                                                            <option value="">— Select —</option>
+                                                            {['Government exam','Professional society award'].map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    {d.category_type === 'Professional society award' && (
+                                                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                                            <label className="form-label">Professional Society Name *</label>
+                                                            <input className="form-input" value={d.society || ''} onChange={e => upd('society', e.target.value)} placeholder="e.g. ACM STUDENT CHAPTER" />
+                                                        </div>
+                                                    )}
+                                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                                        <label className="form-label">{d.category_type === 'Government exam' ? 'Name of Exam' : 'Name of Award'} *</label>
+                                                        <input className="form-input" value={d.award_name || ''} onChange={e => upd('award_name', e.target.value)} placeholder={d.category_type === 'Government exam' ? 'e.g. GATE 2024' : 'e.g. Outstanding Student Award'} />
+                                                    </div>
+                                                </>)}
+                                                {/* Mentored by Faculty (all categories) */}
+                                                <div style={{ gridColumn: '1 / -1', borderTop: '1.5px dashed #e8eaed', paddingTop: 12 }}>
+                                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
+                                                        <input type="checkbox" checked={!!d.mentored_by} onChange={e => upd('mentored_by', e.target.checked)} />
+                                                        Mentored by Faculty
+                                                    </label>
+                                                    {d.mentored_by && (
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', marginTop: 10 }}>
+                                                            <div className="form-group">
+                                                                <label className="form-label">Faculty Name *</label>
+                                                                <input className="form-input" value={d.faculty_name || ''} onChange={e => upd('faculty_name', e.target.value)} placeholder="e.g. Dr. Ankita Sharma" />
+                                                            </div>
+                                                            <div className="form-group">
+                                                                <label className="form-label">Faculty E-Code *</label>
+                                                                <input className="form-input" value={d.faculty_ecode || ''} onChange={e => upd('faculty_ecode', e.target.value)} placeholder="e.g. E12345" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Notice ── */}
+                    <div style={{ background: '#e8f0fe', borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 8 }}>
+                        <CheckCircle size={16} style={{ color: '#1a73e8', flexShrink: 0, marginTop: 2 }} />
+                        <span style={{ fontSize: 13, color: '#1a73e8', fontWeight: 500 }}>
+                            This awardee will be added with <strong>Approved</strong> status and will instantly show in both the <strong>All</strong> and <strong>Approved</strong> tabs. No file uploads are required for manually added awardees.
+                        </span>
+                    </div>
+
+                    {saveError && (
+                        <div className="admin-alert admin-alert-error" style={{ marginTop: 12 }}>
+                            <AlertTriangle size={15} /> {saveError}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div style={{ padding: '16px 24px', borderTop: '1px solid #e8eaed', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
+                    <button className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+                    <button
+                        className="btn btn-primary"
+                        style={{ background: '#1a73e8', borderColor: '#1a73e8', gap: 8 }}
+                        disabled={saving}
+                        onClick={() => { if (validateBasic()) handleSubmit(); }}
+                        id="btn-confirm-add-awardee"
+                    >
+                        {saving ? <><span className="spinner" /> Adding…</> : <><PlusCircle size={15} /> Add Awardee</>}
+                    </button>
                 </div>
             </div>
         </div>
@@ -691,6 +1184,7 @@ export default function AdminPage({ onLogout }) {
     const [showSendTicketsModal, setShowSendTicketsModal] = useState(false);
     const [sendingTickets, setSendingTickets] = useState(false);
     const [ticketMsg, setTicketMsg] = useState('');
+    const [showAddAwardeeModal, setShowAddAwardeeModal] = useState(false);
 
     // ── Attendance Scanner State ───────────────────────────────────────────────
     const [ticketInput, setTicketInput] = useState('');
@@ -769,12 +1263,14 @@ export default function AdminPage({ onLogout }) {
             const { data } = await markAttendance(code);
             setScanResult({ type: 'success', data: data.registration, message: data.message });
             setScanLog((prev) => [{ type: 'success', code, name: data.registration.name, time: new Date() }, ...prev.slice(0, 19)]);
-            // Update regs in-place so presentCount (and all badges) update instantly
+            // Update regs in-place so row badges + attendance filter update instantly
             setRegs((prev) => prev.map((r) =>
                 r.id.slice(-4).toUpperCase() === code
                     ? { ...r, attended_at: new Date().toISOString() }
                     : r
             ));
+            // Also bump the attended counter in the stats bar
+            setStats((prev) => prev ? { ...prev, attendedCount: (prev.attendedCount || 0) + 1 } : prev);
         } catch (err) {
             const res = err.response?.data;
             if (res?.alreadyPresent) {
@@ -954,6 +1450,13 @@ export default function AdminPage({ onLogout }) {
         try {
             const { data } = await sendTicketEmails();
             setTicketMsg(`✅ ${data.message}`);
+            // Mark ticket_sent_at on all approved rows in local state instantly
+            const now = new Date().toISOString();
+            setRegs((prev) => prev.map((r) => {
+                const isApproved = (r.evaluation_status || '').toUpperCase() === 'APPROVED' ||
+                    (Array.isArray(r.categories) && r.categories.some(c => c.status === 'Approved'));
+                return isApproved && !r.ticket_sent_at ? { ...r, ticket_sent_at: now } : r;
+            }));
         } catch (err) {
             setTicketMsg(`⚠ ${err.response?.data?.error || 'Failed to send ticket emails.'}`);
         } finally {
@@ -1164,6 +1667,34 @@ export default function AdminPage({ onLogout }) {
         } finally {
             setSendingTickets(false);
         }
+    };
+
+    const handleAwardeeAdded = (newReg, seatAction) => {
+        // Prepend the new record so it appears at top in both All and Approved tabs
+        setRegs(prev => [newReg, ...prev]);
+        setStats(prev => {
+            if (!prev) return prev;
+            if (seatAction === 'expanded') {
+                // House was full — backend grew totalSeats, so remainingSeats stays the same
+                return {
+                    ...prev,
+                    totalRegistrations: prev.totalRegistrations + 1,
+                    totalSeats:  prev.totalSeats + 1,
+                    bookedSeats: prev.bookedSeats + 1,
+                    // remainingSeats unchanged
+                };
+            } else {
+                // Seats were available — just consume one
+                return {
+                    ...prev,
+                    totalRegistrations: prev.totalRegistrations + 1,
+                    bookedSeats:    prev.bookedSeats + 1,
+                    remainingSeats: Math.max(0, prev.remainingSeats - 1),
+                };
+            }
+        });
+        setDeleteMsg(`✅ Awardee "${newReg.name}" added and approved successfully!`);
+        setTimeout(() => setDeleteMsg(''), 5000);
     };
 
     const SortIcon = ({ col }) => sortKey === col
@@ -1431,9 +1962,20 @@ export default function AdminPage({ onLogout }) {
                                     </>
                                 )}
                             </div>
-                            <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
-                                <RefreshCw size={14} /> Refresh
-                            </button>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <button
+                                    className="btn btn-sm"
+                                    style={{ background: '#1a73e8', color: 'white', border: 'none', gap: 6, fontWeight: 700 }}
+                                    onClick={() => setShowAddAwardeeModal(true)}
+                                    id="btn-add-awardee"
+                                    title="Manually add an awardee with Approved status"
+                                >
+                                    <PlusCircle size={14} /> Add Awardee
+                                </button>
+                                <button className="btn btn-secondary btn-sm" onClick={load} id="btn-refresh">
+                                    <RefreshCw size={14} /> Refresh
+                                </button>
+                            </div>
                         </div>
 
                         {(deleteMsg || ticketMsg) && (
@@ -2283,6 +2825,13 @@ export default function AdminPage({ onLogout }) {
                     onConfirm={handleSendTickets}
                     onCancel={() => !sendingTickets && setShowSendTicketsModal(false)}
                     loading={sendingTickets}
+                />
+            )}
+
+            {showAddAwardeeModal && (
+                <AddAwardeeModal
+                    onClose={() => setShowAddAwardeeModal(false)}
+                    onAdded={handleAwardeeAdded}
                 />
             )}
         </div>
