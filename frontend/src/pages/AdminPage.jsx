@@ -1041,6 +1041,7 @@ export default function AdminPage({ onLogout }) {
         const standardHeaders = [
             'Name', 'Email', 'UID/EID', 'Department', 'Cluster',
             'Category Type', 'Category Status', 'Category Details',
+            ...(activeTab === 'approved' ? ['Type of Project', 'Prize Money (₹)', 'Title / Name', 'Society Name'] : []),
             'Registered At', 'Ticket Sent', 'Overall Status', 'Award / Grant Type', 'Attendance'
         ];
         const headers = customHeaders || standardHeaders;
@@ -1081,8 +1082,13 @@ export default function AdminPage({ onLogout }) {
                     const awardVal = cat ? (cat.award || '—')
                         .replace(/\+/g, ' + ')
                         .replace(/\b\w/g, l => l.toUpperCase()) : '—';
+                        
+                    const prizeMoneyVal = cat && cat.data && cat.data.prize_money ? cat.data.prize_money : '—';
+                    const projectTypeVal = cat && cat.data && cat.data.project_type ? cat.data.project_type : '—';
+                    const titleNameVal = cat && cat.data ? (cat.data.cert_title || cat.data.award_name || '—') : '—';
+                    const societyNameVal = cat && cat.data && cat.data.society ? cat.data.society : '—';
 
-                    rows.push([
+                    const baseRow = [
                         `"${(r.name || '').replace(/"/g, '""')}"`,
                         `"${(r.email || '').replace(/"/g, '""')}"`,
                         `"${(r.uid || '').replace(/"/g, '""')}"`,
@@ -1090,13 +1096,25 @@ export default function AdminPage({ onLogout }) {
                         `"${(r.cluster || '').replace(/"/g, '""')}"`,
                         `"${cat ? (cat.type || '').charAt(0).toUpperCase() + (cat.type || '').slice(1) : '—'}"`,
                         `"${cat ? (cat.status || 'Pending').replace(/"/g, '""') : '—'}"`,
-                        `"${detailsStr.replace(/"/g, '""')}"`,
+                        `"${detailsStr.replace(/"/g, '""')}"`
+                    ];
+
+                    if (activeTab === 'approved') {
+                        baseRow.push(`"${String(projectTypeVal).replace(/"/g, '""')}"`);
+                        baseRow.push(`"${String(prizeMoneyVal).replace(/"/g, '""')}"`);
+                        baseRow.push(`"${String(titleNameVal).replace(/"/g, '""')}"`);
+                        baseRow.push(`"${String(societyNameVal).replace(/"/g, '""')}"`);
+                    }
+
+                    baseRow.push(
                         `"${new Date(r.created_at).toLocaleString()}"`,
                         `"${r.ticket_sent_at ? 'Yes' : 'No'}"`,
                         `"${(r.evaluation_status || 'Pending').replace(/"/g, '""')}"`,
                         `"${awardVal.replace(/"/g, '""')}"`,
                         `"${r.attended_at ? 'Present' : 'Absent'}"`
-                    ].join(','));
+                    );
+
+                    rows.push(baseRow.join(','));
                 });
             } else if (activeTab !== 'approved' && catFilter === 'all') {
                 rows.push([
