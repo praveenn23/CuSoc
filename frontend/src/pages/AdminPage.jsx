@@ -8,7 +8,8 @@ import {
 import {
     fetchAdminStats, fetchRegistrations, deleteRegistration,
     fetchAdminEvent, updateAdminEvent, sendTicketEmails, markAttendance,
-    updateEvaluation, updateAward, sendTestTicket, addAwardee,
+    updateEvaluation, updateAward, sendTestMail, addAwardee,
+    updateMentorDetails, sendFacultyInvitations
 } from '../services/adminApi';
 import './AdminPage.css';
 import jsPDF from 'jspdf';
@@ -678,6 +679,77 @@ function AddAwardeeModal({ onClose, onAdded }) {
     );
 }
 
+function EditFacultyModal({ mentor, onClose, onUpdated }) {
+    const [name, setName] = useState(mentor.facultyName || '');
+    const [ecode, setEcode] = useState(mentor.facultyEcode || '');
+    const [email, setEmail] = useState(mentor.facultyEmail || '');
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSave = async () => {
+        if (!name.trim() || !ecode.trim()) {
+            return setError('Name and E-Code are required.');
+        }
+        setSaving(true);
+        setError('');
+        try {
+            await updateMentorDetails({
+                oldEcode: mentor.facultyEcode,
+                oldName: mentor.facultyName,
+                newName: name.trim(),
+                newEcode: ecode.trim().toUpperCase(),
+                newEmail: email.trim().toLowerCase()
+            });
+            onUpdated();
+            onClose();
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to update faculty details.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+            <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 450, padding: 0, borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', background: '#f8f9fa', borderBottom: '1px solid #e8eaed', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ padding: 8, background: '#e8f0fe', borderRadius: 8, color: '#1a73e8' }}>
+                            <Edit3 size={18} />
+                        </div>
+                        <h3 style={{ margin: 0, fontSize: 16 }}>Edit Faculty Details</h3>
+                    </div>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5f6368' }}><X size={18} /></button>
+                </div>
+                <div style={{ padding: '24px' }}>
+                    <div className="form-group" style={{ marginBottom: 16 }}>
+                        <label className="form-label">Faculty Name</label>
+                        <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name" />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 16 }}>
+                        <label className="form-label">Faculty E-Code</label>
+                        <input className="form-input" value={ecode} onChange={e => setEcode(e.target.value)} placeholder="e.g. E12345" />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 16 }}>
+                        <label className="form-label">Custom Email ID <span style={{ fontWeight: 400, color: '#5f6368', fontSize: 11 }}>(Optional)</span></label>
+                        <input className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="Leave blank to auto-generate" />
+                        <p style={{ marginTop: 6, fontSize: 11, color: '#5f6368', fontStyle: 'italic' }}>
+                            If blank, system generates: <strong>{name.trim().split(' ')[0].toLowerCase() || 'name'}.{(ecode.trim() || 'ecode').toLowerCase()}@cumail.in</strong>
+                        </p>
+                    </div>
+                    {error && <div style={{ color: '#c5221f', fontSize: 13, marginBottom: 16 }}>{error}</div>}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
+                        <button className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ background: '#1a73e8' }}>
+                            {saving ? 'Saving...' : 'Update All Records'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── Blank speaker / partner / section templates ──────────────────────────────
 const BLANK_SPEAKER = { id: Date.now(), name: '', role: '', bio: '', linkedin: '', color: '#1a73e8', initials: '' };
 const BLANK_PARTNER = { id: Date.now(), name: '', logo_url: '' };
@@ -1194,6 +1266,10 @@ export default function AdminPage({ onLogout }) {
     const [catFilter, setCatFilter] = useState('all');
     const [awardFilter, setAwardFilter] = useState('all');
     const [mentorView, setMentorView] = useState('all'); // 'all' or 'unique'
+    const [selectedMentors, setSelectedMentors] = useState([]); // Array of facultyEcodes
+    const [editingFaculty, setEditingFaculty] = useState(null);
+    const [saving, setSaving] = useState(false);
+
     const [scanLoading, setScanLoading] = useState(false);
     const [scanResult, setScanResult] = useState(null);
     const [scanLog, setScanLog] = useState([]);
@@ -1261,16 +1337,33 @@ export default function AdminPage({ onLogout }) {
         setScanResult(null);
         try {
             const { data } = await markAttendance(code);
+            const isFaculty = code.startsWith('F');
+            
             setScanResult({ type: 'success', data: data.registration, message: data.message });
-            setScanLog((prev) => [{ type: 'success', code, name: data.registration.name, time: new Date() }, ...prev.slice(0, 19)]);
+            setScanLog((prev) => [{ 
+                type: 'success', 
+                code: isFaculty ? data.registration.ticketCode : code, 
+                name: data.registration.name, 
+                time: new Date(),
+                isFaculty
+            }, ...prev.slice(0, 19)]);
+            
             // Update regs in-place so row badges + attendance filter update instantly
-            setRegs((prev) => prev.map((r) =>
-                r.id.slice(-4).toUpperCase() === code
-                    ? { ...r, attended_at: new Date().toISOString() }
-                    : r
-            ));
-            // Also bump the attended counter in the stats bar
-            setStats((prev) => prev ? { ...prev, attendedCount: (prev.attendedCount || 0) + 1 } : prev);
+            setRegs((prev) => prev.map((r) => {
+                const matchStudent = !isFaculty && r.id.slice(-4).toUpperCase() === code;
+                const matchFaculty = isFaculty && Array.isArray(r.categories) && r.categories.some(cat => 
+                    cat.data && cat.data.faculty_ecode && getFacultyTicketId(cat.data.faculty_ecode) === code
+                );
+
+                if (matchStudent) return { ...r, attended_at: new Date().toISOString() };
+                if (matchFaculty) return { ...r, faculty_attended_at: new Date().toISOString(), faculty_ticket_code: code };
+                return r;
+            }));
+
+            // Only bump the attended counter if it's a student (as it tracks seats)
+            if (!isFaculty) {
+                setStats((prev) => prev ? { ...prev, attendedCount: (prev.attendedCount || 0) + 1 } : prev);
+            }
         } catch (err) {
             const res = err.response?.data;
             if (res?.alreadyPresent) {
@@ -1305,6 +1398,16 @@ export default function AdminPage({ onLogout }) {
     const baseRegs = activeTab === 'approved' ? approvedRegs : regs;
 
     // Extract faculty mentors from approved categories
+    const getFacultyTicketId = (ecode) => {
+        if (!ecode) return 'N/A';
+        let hash = 0;
+        for (let i = 0; i < ecode.length; i++) {
+            hash = ((hash << 5) - hash) + ecode.charCodeAt(i);
+            hash |= 0;
+        }
+        return `F${Math.abs(hash).toString(16).slice(-3).toUpperCase()}`;
+    };
+
     const facultyMentors = [];
     const uniqueMentorCodes = new Set();
     
@@ -1329,7 +1432,10 @@ export default function AdminPage({ onLogout }) {
                         categoryRaw: cat.type,
                         categoryIndex: r.categories.findIndex(c => c === cat),
                         award: cat.award,
-                        facultyAward: cat.faculty_award
+                        facultyAward: cat.faculty_award,
+                        facultyEmail: cat.data.faculty_email,
+                        facultyAttendedAt: r.faculty_attended_at,
+                        facultyTicketCode: r.faculty_ticket_code
                     });
                     if (cat.data.faculty_ecode) uniqueMentorCodes.add(cat.data.faculty_ecode.trim().toUpperCase());
                 }
@@ -1344,10 +1450,15 @@ export default function AdminPage({ onLogout }) {
             uniqueMentorsMap[key] = {
                 facultyName: m.facultyName,
                 facultyEcode: m.facultyEcode,
+                facultyEmail: m.facultyEmail,
                 mentorships: []
             };
         }
         uniqueMentorsMap[key].mentorships.push(m);
+        // Carry over attendance if any mentorship marks it
+        if (m.facultyAttendedAt && !uniqueMentorsMap[key].facultyAttendedAt) {
+            uniqueMentorsMap[key].facultyAttendedAt = m.facultyAttendedAt;
+        }
     });
     const uniqueMentorsList = Object.values(uniqueMentorsMap);
 
@@ -1518,6 +1629,77 @@ export default function AdminPage({ onLogout }) {
         } catch (err) {
             console.error('Failed to update award:', err);
             alert('Failed to update award selection');
+        }
+    };
+
+    const handleSendFacultyMail = async () => {
+        if (!selectedMentors.length) {
+            alert("Select at least one faculty member.");
+            return;
+        }
+
+        const facultyListToSend = selectedMentors.map(ecode => {
+            const m = uniqueMentorsList.find(um => um.facultyEcode === ecode);
+            if (!m) return null;
+
+            // Resolve email
+            let email = m.facultyEmail;
+            if (!email) {
+                const firstName = (m.facultyName || '').trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (firstName && ecode) email = `${firstName}.${ecode.toLowerCase()}@cumail.in`;
+            }
+
+            if (!email) return null;
+
+            return {
+                email,
+                facultyName: m.facultyName,
+                studentName: m.studentNames?.[0] || 'Your Student',
+                projectTitle: m.categoryAndProject?.[0]?.projectTitle || 'Various Projects',
+                category: m.mentoredCategories?.[0] || 'Mentorship',
+                ticketId: getFacultyTicketId(ecode)
+            };
+        }).filter(Boolean);
+
+        if (facultyListToSend.length === 0) {
+            alert("Could not determine valid email addresses for the selected mentors.");
+            return;
+        }
+
+        if (!confirm(`Send automated premium invitations to ${facultyListToSend.length} faculty members directly?`)) return;
+
+        setSaving(true);
+        try {
+            const { data } = await sendFacultyInvitations(facultyListToSend);
+            alert(data.message || "Invitations sent successfully!");
+            setSelectedMentors([]);
+        } catch (err) {
+            console.error("Failed to send invitations:", err);
+            alert("Failed to send invitations. Check console/backend.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSendFacultyTestMail = async () => {
+        const testEmail = "sahilpraveenk03@gmail.com";
+        setSaving(true);
+        try {
+            const mockFaculty = {
+                facultyName: "Dr. Ankita Sharma",
+                facultyEcode: "E9938",
+                studentName: "Abhigya Ranjan",
+                projectTitle: "SANSAD National Youth Parliament",
+                category: "Competitions",
+                ticketId: getFacultyTicketId("E9938")
+            };
+            const { data } = await sendTestMail(testEmail, 'faculty', mockFaculty);
+            alert(data.message || `Test invitation sent to ${testEmail}`);
+        } catch (err) {
+            console.error('Failed to send test mail:', err);
+            alert('Failed to send test mail. Check console.');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -1765,12 +1947,12 @@ export default function AdminPage({ onLogout }) {
                 {/* ── Stats ── */}
                 {stats && (
                     <div className="admin-stats-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
-                        <StatCard icon={<Users size={22} />} label="Total Registrations" value={stats.totalRegistrations} color="blue" />
-                        <StatCard icon={<Ticket size={22} />} label="Total Seats" value={stats.totalSeats} color="green" />
-                        <StatCard icon={<BarChart2 size={22} />} label="Booked Seats" value={stats.bookedSeats} color="yellow" />
-                        <StatCard icon={<CheckCircle size={22} />} label="Seats Remaining" value={stats.remainingSeats} color={stats.remainingSeats === 0 ? 'red' : 'teal'} />
+                        <StatCard icon={<Users size={22} />} label="Total Registrations" value={stats?.totalRegistrations || 0} color="blue" />
+                        <StatCard icon={<Ticket size={22} />} label="Total Seats" value={stats?.totalSeats || 0} color="green" />
+                        <StatCard icon={<BarChart2 size={22} />} label="Booked Seats" value={stats?.bookedSeats || 0} color="yellow" />
+                        <StatCard icon={<CheckCircle size={22} />} label="Seats Remaining" value={stats?.remainingSeats || 0} color={stats?.remainingSeats === 0 ? 'red' : 'teal'} />
                         {/* Use max of: live presentCount (updated on scan) vs DB attendedCount (loaded on mount) */}
-                        <StatCard icon={<UserCheck size={22} />} label="Attended" value={Math.max(presentCount, stats.attendedCount ?? 0)} color="green" />
+                        <StatCard icon={<UserCheck size={22} />} label="Attended" value={Math.max(presentCount, stats?.attendedCount ?? 0)} color="green" />
                     </div>
                 )}
 
@@ -1781,7 +1963,7 @@ export default function AdminPage({ onLogout }) {
                         onClick={() => setActiveTab('registrations')}
                         id="tab-registrations"
                     >
-                        <Users size={16} /> All ({stats.totalRegistrations})
+                        <Users size={16} /> All ({stats?.totalRegistrations || 0})
                     </button>
                     <button
                         className={`admin-tab ${activeTab === 'approved' ? 'active' : ''}`}
@@ -2318,16 +2500,35 @@ export default function AdminPage({ onLogout }) {
                                     <p>Showing <strong>{facultyMentors.length}</strong> mentorship entries from <strong>{uniqueMentorCodes.size}</strong> unique faculty members.</p>
                                 </div>
                                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                    {selectedMentors.length > 0 && mentorView === 'unique' && (
+                                        <button 
+                                            className="btn btn-primary btn-sm"
+                                            onClick={handleSendFacultyMail}
+                                            style={{ background: '#1a73e8', borderColor: '#1a73e8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                                        >
+                                            <Mail size={14} /> Send Mail ({selectedMentors.length})
+                                        </button>
+                                    )}
+                                    <button 
+                                        className="btn btn-secondary btn-sm" 
+                                        onClick={handleSendFacultyTestMail}
+                                        style={{ border: '1px solid #1a73e8', color: '#1a73e8', background: '#e8f0fe', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                                        title="Send a sample invitation to sahilpraveenk03@gmail.com"
+                                        disabled={saving}
+                                    >
+                                        {saving ? <span className="spinner" style={{ width: 12, height: 12 }} /> : <Mail size={14} />}
+                                        Send Test Mail
+                                    </button>
                                     <div className="admin-view-toggle">
                                         <button 
                                             className={`toggle-btn ${mentorView === 'all' ? 'active' : ''}`}
-                                            onClick={() => setMentorView('all')}
+                                            onClick={() => { setMentorView('all'); setSelectedMentors([]); }}
                                         >
                                             Detailed
                                         </button>
                                         <button 
                                             className={`toggle-btn ${mentorView === 'unique' ? 'active' : ''}`}
-                                            onClick={() => setMentorView('unique')}
+                                            onClick={() => { setMentorView('unique'); setSelectedMentors([]); }}
                                         >
                                             Unique Summary
                                         </button>
@@ -2344,16 +2545,20 @@ export default function AdminPage({ onLogout }) {
                                             doc.text(summaryText, 14, 28);
                                             doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, 14, 34);
 
-                                            const tableColumn = ["#", "Faculty Name", "E-Code", "Students Mentored", "Categories", "Projects & Students"];
+                                            const tableColumn = ["#", "Faculty Name", "E-Code", "Email", "Students Mentored", "Categories", "Projects & Students"];
                                             const tableRows = [];
 
                                             uniqueMentorsList.forEach((u, idx) => {
                                                 const categories = [...new Set(u.mentorships.map(m => m.category))].join(', ');
                                                 const projects = u.mentorships.map(m => `${m.studentName}: ${m.projectTitle}`).join('\n');
+                                                const firstName = (u.facultyName || '').trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+                                                const genEmail = firstName && u.facultyEcode ? `${firstName}.${u.facultyEcode.toLowerCase()}@cumail.in` : 'N/A';
+                                                const email = u.facultyEmail || genEmail;
                                                 tableRows.push([
                                                     idx + 1,
                                                     u.facultyName || 'N/A',
                                                     u.facultyEcode || 'N/A',
+                                                    email,
                                                     u.mentorships.length.toString(),
                                                     categories,
                                                     projects
@@ -2367,14 +2572,15 @@ export default function AdminPage({ onLogout }) {
                                                 theme: 'grid',
                                                 headStyles: { fillColor: [26, 115, 232], textColor: [255, 255, 255], fontStyle: 'bold' },
                                                 alternateRowStyles: { fillColor: [248, 249, 250] },
-                                                styles: { fontSize: 9, cellPadding: 4, overflow: 'linebreak', valign: 'middle' },
+                                                styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak', valign: 'middle' },
                                                 columnStyles: {
-                                                    0: { cellWidth: 10, halign: 'center' },
-                                                    1: { cellWidth: 40, fontStyle: 'bold' },
-                                                    2: { cellWidth: 25 },
-                                                    3: { cellWidth: 30, halign: 'center', fontStyle: 'bold' },
-                                                    4: { cellWidth: 40 },
-                                                    5: { cellWidth: 'auto' }
+                                                    0: { cellWidth: 8, halign: 'center' },
+                                                    1: { cellWidth: 35, fontStyle: 'bold' },
+                                                    2: { cellWidth: 20 },
+                                                    3: { cellWidth: 45, fontSize: 7 },
+                                                    4: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
+                                                    5: { cellWidth: 35 },
+                                                    6: { cellWidth: 'auto' }
                                                 }
                                             });
 
@@ -2393,8 +2599,8 @@ export default function AdminPage({ onLogout }) {
                                         <Download size={14} /> Export {mentorView === 'all' ? 'List' : 'Summary as PDF'}
                                     </button>
                                 </div>
+                                </div>
                             </div>
-                        </div>
 
                         <div className="admin-table-wrap">
                             {mentorView === 'all' ? (
@@ -2463,21 +2669,72 @@ export default function AdminPage({ onLogout }) {
                                 <table className="admin-table">
                                     <thead>
                                         <tr>
+                                            <th style={{ width: 40, textAlign: 'center' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    style={{ cursor: 'pointer' }}
+                                                    checked={uniqueMentorsList.length > 0 && selectedMentors.length === uniqueMentorsList.length}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedMentors(uniqueMentorsList.map(m => m.facultyEcode));
+                                                        } else {
+                                                            setSelectedMentors([]);
+                                                        }
+                                                    }}
+                                                />
+                                            </th>
                                             <th className="admin-td-num">#</th>
+                                            <th style={{ width: 85 }}>Ticket ID</th>
                                             <th>Faculty Name</th>
                                             <th>Faculty E-Code</th>
+                                            <th style={{ width: 100, textAlign: 'center' }}>Attendance</th>
+                                            <th>Faculty Email</th>
                                             <th>Total Students</th>
                                             <th>Mentored Categories</th>
                                             <th style={{ minWidth: 300 }}>Projects / Student Names</th>
+                                            <th style={{ width: 60, textAlign: 'center' }}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {uniqueMentorsList.length > 0 ? (
                                             uniqueMentorsList.map((m, idx) => (
-                                                <tr key={m.facultyEcode} className="admin-row">
+                                                <tr key={m.facultyEcode} className={`admin-row ${selectedMentors.includes(m.facultyEcode) ? 'selected-row' : ''}`} style={{ background: selectedMentors.includes(m.facultyEcode) ? '#f8faff' : undefined }}>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            style={{ cursor: 'pointer' }}
+                                                            checked={selectedMentors.includes(m.facultyEcode)}
+                                                            onChange={() => {
+                                                                setSelectedMentors(prev => 
+                                                                    prev.includes(m.facultyEcode) 
+                                                                        ? prev.filter(e => e !== m.facultyEcode) 
+                                                                        : [...prev, m.facultyEcode]
+                                                                );
+                                                            }}
+                                                        />
+                                                    </td>
                                                     <td className="admin-td-num">{idx + 1}</td>
+                                                    <td style={{ fontWeight: 700, color: '#1a73e8', fontFamily: 'monospace' }}>{getFacultyTicketId(m.facultyEcode)}</td>
                                                     <td style={{ fontWeight: 600, color: '#202124' }}>{m.facultyName}</td>
                                                     <td><span className="badge badge-secondary" style={{ background: '#f1f3f4', color: '#5f6368', border: '1px solid #dadce0' }}>{m.facultyEcode}</span></td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        {m.facultyAttendedAt ? (
+                                                            <span className="badge badge-success" style={{ background: '#e6f4ea', color: '#1e8e3e', fontSize: '10px', padding: '4px 8px' }}>
+                                                                <CheckCircle size={10} style={{ marginRight: 4 }} /> Present
+                                                            </span>
+                                                        ) : (
+                                                            <span className="badge badge-secondary" style={{ background: '#f1f3f4', color: '#5f6368', fontSize: '10px', padding: '4px 8px' }}>
+                                                                Absent
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ fontSize: '11px', color: 'var(--primary)' }}>
+                                                        {(() => {
+                                                            if (m.facultyEmail) return m.facultyEmail;
+                                                            const firstName = (m.facultyName || '').trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+                                                            return firstName && m.facultyEcode ? `${firstName}.${m.facultyEcode.toLowerCase()}@cumail.in` : '—';
+                                                        })()}
+                                                    </td>
                                                     <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{m.mentorships.length}</td>
                                                     <td>
                                                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -2499,6 +2756,16 @@ export default function AdminPage({ onLogout }) {
                                                                 </div>
                                                             ))}
                                                         </div>
+                                                    </td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        <button 
+                                                            className="btn-icon-sm" 
+                                                            onClick={() => setEditingFaculty(m)}
+                                                            title="Edit Faculty Details"
+                                                            style={{ color: '#1a73e8', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                        >
+                                                            <Edit3 size={14} />
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))
@@ -2605,7 +2872,10 @@ export default function AdminPage({ onLogout }) {
                                         <span className="scan-log-icon">
                                             {entry.type === 'success' ? '✅' : entry.type === 'already' ? '⚠️' : '❌'}
                                         </span>
-                                        <span className="scan-log-code">EVT-{entry.code}</span>
+                                        <span className="scan-log-code">
+                                            {entry.code && entry.code.startsWith('F') ? '' : 'EVT-'}
+                                            {entry.code}
+                                        </span>
                                         <span className="scan-log-name">{entry.name || '—'}</span>
                                         <span className="scan-log-time">
                                             {entry.time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
@@ -2832,6 +3102,14 @@ export default function AdminPage({ onLogout }) {
                 <AddAwardeeModal
                     onClose={() => setShowAddAwardeeModal(false)}
                     onAdded={handleAwardeeAdded}
+                />
+            )}
+
+            {editingFaculty && (
+                <EditFacultyModal 
+                    mentor={editingFaculty}
+                    onClose={() => setEditingFaculty(null)}
+                    onUpdated={() => load()}
                 />
             )}
         </div>
