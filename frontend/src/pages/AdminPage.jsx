@@ -1451,10 +1451,26 @@ export default function AdminPage({ onLogout }) {
                 facultyName: m.facultyName,
                 facultyEcode: m.facultyEcode,
                 facultyEmail: m.facultyEmail,
-                mentorships: []
+                mentorships: [],
+                studentNames: [],
+                mentoredCategories: [],
+                categoryAndProject: []
             };
         }
         uniqueMentorsMap[key].mentorships.push(m);
+        
+        // Populate arrays for mailing logic
+        if (!uniqueMentorsMap[key].studentNames.includes(m.studentName)) {
+            uniqueMentorsMap[key].studentNames.push(m.studentName);
+        }
+        if (!uniqueMentorsMap[key].mentoredCategories.includes(m.category)) {
+            uniqueMentorsMap[key].mentoredCategories.push(m.category);
+        }
+        uniqueMentorsMap[key].categoryAndProject.push({ 
+            category: m.category, 
+            projectTitle: m.projectTitle 
+        });
+
         // Carry over attendance if any mentorship marks it
         if (m.facultyAttendedAt && !uniqueMentorsMap[key].facultyAttendedAt) {
             uniqueMentorsMap[key].facultyAttendedAt = m.facultyAttendedAt;
@@ -1654,9 +1670,9 @@ export default function AdminPage({ onLogout }) {
             return {
                 email,
                 facultyName: m.facultyName,
-                studentName: m.studentNames?.[0] || 'Your Student',
-                projectTitle: m.categoryAndProject?.[0]?.projectTitle || 'Various Projects',
-                category: m.mentoredCategories?.[0] || 'Mentorship',
+                studentName: (m.studentNames || []).join(', ') || 'Your Student',
+                projectTitle: (m.categoryAndProject || []).map(cp => cp.projectTitle).filter(Boolean).slice(0, 3).join(', ') + (m.categoryAndProject.length > 3 ? '...' : '') || 'Various Projects',
+                category: (m.mentoredCategories || []).join(', ') || 'Mentorship',
                 ticketId: getFacultyTicketId(ecode)
             };
         }).filter(Boolean);
